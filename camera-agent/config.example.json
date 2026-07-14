@@ -1,0 +1,9 @@
+{
+    "camera_slug": "front-door",
+    "camera_id": 0,
+    "capture_interval_seconds": 60,
+    "maximum_width": 1280,
+    "jpeg_quality": 72,
+    "capture_timeout_seconds": 30,
+    "output_directory": "$HOME/timelapse/validation-captures"
+}
