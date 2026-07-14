@@ -31,21 +31,17 @@ class TermuxCamera:
         self._executable = executable
 
     def capture(
-            self,
-            *,
-            camera_id: int,
-            destination: Path,
-            timeout_seconds: int
+        self, *, camera_id: int, destination: Path, timeout_seconds: int
     ) -> None:
         executable_path = shutil.which(self._executable)
         if executable_path is None:
             raise CaptureError(
                 "termux-camera-photo was not found; install the termux-api package"
             )
-        
+
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.unlink(missing_ok=True)
-        
+
         try:
             completed = subprocess.run(
                 [
@@ -67,20 +63,20 @@ class TermuxCamera:
         except OSError as exc:
             destination.unlink(missing_ok=True)
             raise CaptureError(f"camera command could not be started: {exc}") from exc
-        
+
         if completed.returncode != 0:
             destination.unlink(missing_ok=True)
             detail = (completed.stderr or completed.stdout or "no error detail").strip()
             raise CaptureError(
                 f"camera command exited with {completed.returncode}: {detail}"
             )
-        
+
         if not destination.is_file():
             raise CaptureError("camera command succeeded but did not create a file")
         if destination.stat().st_size <= 0:
             destination.unlink(missing_ok=True)
             raise CaptureError("camera command created an empty file")
-        
+
 
 def capture_frame(
     config: AgentConfig,

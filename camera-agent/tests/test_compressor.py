@@ -25,7 +25,9 @@ class NormalizeJpegTests(unittest.TestCase):
                 quality=72,
             )
 
-            self.assertEqual((metadata.width_pixels, metadata.height_pixels), (1280, 640))
+            self.assertEqual(
+                (metadata.width_pixels, metadata.height_pixels), (1280, 640)
+            )
             self.assertGreater(metadata.file_size_bytes, 0)
             self.assertEqual(len(metadata.sha256), 64)
 

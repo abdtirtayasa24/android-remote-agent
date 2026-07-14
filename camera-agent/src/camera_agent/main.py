@@ -34,20 +34,22 @@ class SingleInstanceLock:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             lock_file.close()
-            raise AlreadyRunningError("another camera-agent process is already running") from exc
-        
+            raise AlreadyRunningError(
+                "another camera-agent process is already running"
+            ) from exc
+
         lock_file.seek(0)
         lock_file.truncate()
         lock_file.write(f"{os.getpid()}\n")
         lock_file.flush()
         self._file = lock_file
         return self
-    
+
     def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc: BaseException | None,
-            traceback: TracebackType | None,
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         if self._file is None:
             return
@@ -61,8 +63,12 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
 
     run_mode = parser.add_mutually_exclusive_group()
-    run_mode.add_argument("--once", action="store_true", help="capture one image and exit")
-    run_mode.add_argument("--count", type=int, help="capture a finite number of scheduled images")
+    run_mode.add_argument(
+        "--once", action="store_true", help="capture one image and exit"
+    )
+    run_mode.add_argument(
+        "--count", type=int, help="capture a finite number of scheduled images"
+    )
 
     parser.add_argument(
         "--camera-id",
@@ -87,10 +93,10 @@ def configure_logging() -> None:
 
 
 def run_capture_schedule(
-        config: AgentConfig,
-        *,
-        capture_count: int | None,
-        fail_fast: bool,
+    config: AgentConfig,
+    *,
+    capture_count: int | None,
+    fail_fast: bool,
 ) -> int:
     next_capture_deadline = time.monotonic()
     attempts = 0
@@ -128,16 +134,17 @@ def run_capture_schedule(
             )
             if fail_fast:
                 return 1
-            
+
         if capture_count is not None and attempts >= capture_count:
             break
 
         next_capture_deadline += config.capture_interval_seconds
         now = time.monotonic()
         if now > next_capture_deadline:
-            skipped_slots = int(
-                (now - next_capture_deadline) // config.capture_interval_seconds
-            ) + 1
+            skipped_slots = (
+                int((now - next_capture_deadline) // config.capture_interval_seconds)
+                + 1
+            )
             next_capture_deadline += skipped_slots * config.capture_interval_seconds
             LOGGER.warning("capture_slots_skipped count=%s", skipped_slots)
 

@@ -1,0 +1,51 @@
+[Unit]
+Description=Time-lapse Camera Telegram Bot
+Documentation=man:systemd.service(5)
+Requires=timelapse-migrate.service
+After=timelapse-migrate.service network-online.target
+Wants=network-online.target
+PartOf=timelapse-camera.target
+
+[Service]
+Type=simple
+
+User=ubuntu
+Group=ubuntu
+
+WorkingDirectory=/opt/android-remote/current/server
+EnvironmentFile=/etc/android-remote/server.env
+
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/android-remote/current/server/src
+Environment=TZ=UTC
+
+ExecStart=/opt/android-remote/.venv/bin/python \
+    -m timelapse.bot.application
+
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+
+UMask=0027
+MemoryAccounting=true
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/timelapse
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=timelapse-camera.target

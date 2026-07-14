@@ -11,13 +11,13 @@ from PIL import Image, UnidentifiedImageError
 
 from camera_agent.configuration import AgentConfig, ConfigurationError
 
-_FILENAME_PATTERN = re.compile(
-    r"^(?P<timestamp>\d{8}T\d{6}Z)_[0-9a-fA-F-]{36}\.jpg$"
-)
+_FILENAME_PATTERN = re.compile(r"^(?P<timestamp>\d{8}T\d{6}Z)_[0-9a-fA-F-]{36}\.jpg$")
 
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate Milestone 1 capture evidence")
+    parser = argparse.ArgumentParser(
+        description="Validate Milestone 1 capture evidence"
+    )
     parser.add_argument(
         "--config",
         type=Path,
@@ -74,7 +74,9 @@ def validate_capture(
 
     return {
         "path": str(path),
-        "captured_at_utc": capture_time_from_name(path).isoformat().replace("+00:00", "Z"),
+        "captured_at_utc": capture_time_from_name(path)
+        .isoformat()
+        .replace("+00:00", "Z"),
         "width": width,
         "height": height,
         "size_bytes": path.stat().st_size,
@@ -118,10 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             invalid.append({"path": str(path), "error": str(exc)})
 
-    capture_times = [
-        parse_utc(str(item["captured_at_utc"]))
-        for item in valid
-    ]
+    capture_times = [parse_utc(str(item["captured_at_utc"])) for item in valid]
     capture_times.sort()
     gaps = [
         (current - previous).total_seconds()
@@ -150,8 +149,7 @@ def main(argv: list[str] | None = None) -> int:
 
     count_failed = len(valid) < args.minimum_count
     gap_failed = (
-        args.maximum_gap_seconds is not None
-        and maximum_gap > args.maximum_gap_seconds
+        args.maximum_gap_seconds is not None and maximum_gap > args.maximum_gap_seconds
     )
     return 1 if invalid or count_failed or gap_failed else 0
 

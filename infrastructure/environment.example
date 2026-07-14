@@ -1,0 +1,28 @@
+# Application
+ENVIRONMENT=production
+LOG_LEVEL=INFO
+TZ=UTC
+
+# Public endpoint
+PUBLIC_DOMAIN=camera.example.com
+LETSENCRYPT_EMAIL=admin@example.com
+
+# Port
+API_PORT=8100
+SSH_PORT=22
+
+# PostgreSQL
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=5432
+POSTGRES_DB=timelapse
+POSTGRES_USER=timelapse
+POSTGRES_PASSWORD=replace-with-a-long-random-password
+
+# Filesystem
+STORAGE_ROOT=/srv/timelapse
+
+# Used in later milestones
+CAMERA_TOKEN_PEPPER=replace-with-a-32-byte-random-value
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ADMIN_USER_ID=
+TELEGRAM_ADMIN_CHAT_ID=

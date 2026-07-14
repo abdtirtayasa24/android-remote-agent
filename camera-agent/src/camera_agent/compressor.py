@@ -22,12 +22,12 @@ class JpegMetadata:
 
 
 def normalize_jpeg(
-        source_path: Path,
-        destination_path: Path,
-        *,
-        maximum_width: int,
-        maximum_height: int,
-        quality: int,
+    source_path: Path,
+    destination_path: Path,
+    *,
+    maximum_width: int,
+    maximum_height: int,
+    quality: int,
 ) -> JpegMetadata:
     """Validate, orient, resize, and atomically write a normalized JPEG."""
     _validate_source_file(source_path)
@@ -79,7 +79,7 @@ def normalize_jpeg(
         if isinstance(exc, InvalidCaptureError):
             raise
         raise InvalidCaptureError(f"cannot normalize captured image: {exc}") from exc
-    
+
 
 def _validate_source_file(source_path: Path) -> None:
     if not source_path.is_file():
