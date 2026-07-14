@@ -10,11 +10,13 @@ if [ -z "${PREFIX:-}" ] || [ ! -d "$PREFIX" ]; then
     exit 1
 fi
 
+echo "Updating Termux package metadata..."
 pkg update
-pkg install -y python termux-api
 
-python -m pip install --upgrade pip
-python -m pip install -r "$PROJECT_DIRECTORY/requirements.txt"
+echo "Installing Python, Pillow, and Termux API packages..."
+pkg install -y python python-pip python-pillow termux-api
+
+python -m pip install --no-cache-dir -r "$PROJECT_DIRECTORY/requirements.txt"
 
 mkdir -p \
     "$TIMELAPSE_HOME/app" \
