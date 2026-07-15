@@ -122,7 +122,7 @@ alembic -c alembic.ini upgrade head
 alembic -c alembic.ini current
 ```
 
-### Build
+## Build
 
 ```bash
 cd server
@@ -135,7 +135,7 @@ python -m build
 
 Artifacts are written to `server/dist`.
 
-### Linting and formatting
+## Linting and formatting
 
 ```bash
 # From server/:
@@ -159,7 +159,7 @@ ruff format \
     camera-agent/src camera-agent/tests
 ```
 
-### Testing
+## Testing
 
 ```bash
 # Unit tests
@@ -177,7 +177,7 @@ pytest tests/integration -v
 pytest -v
 ```
 
-### Run locally
+## Run locally
 
 ```bash
 # Load the environment and start Uvicorn:
@@ -235,7 +235,7 @@ sudo ./infrastructure/camera-admin.sh \
     --display-name "Front Door"
 ```
 
-### Android camera setup
+## Android camera setup
 
 Install Termux and the matching Termux application.
 
@@ -251,7 +251,7 @@ cp config.example.json config.json
 PYTHONPATH=src python -m camera_agent.validation
 ```
 
-### Production deployment
+## Production deployment
 
 ```bash
 # Configure production
@@ -294,3 +294,40 @@ sudo journalctl \
     --no-pager \
     --output=cat
 ```
+
+## Production filesystem
+
+```text
+/opt/timelapse-camera/
+├── current -> releases/<release-id>
+├── releases/
+└── .venv/
+
+/etc/timelapse-camera/
+└── server.env
+
+/srv/timelapse/
+├── images/
+├── exports/
+├── quarantine/
+└── tmp/
+```
+
+`current` and `releases` are deployment-generated and should not be committed.
+
+## Security notes
+
+- Camera plaintext secrets are not stored in the database.
+- Credentials are protected with HMAC-SHA-256.
+- Credentials can be revoked independently.
+- Production uploads require HTTPS.
+- Client filenames are ignored.
+- Uploaded files are size-limited and checksum-verified.
+- JPEG files are fully decoded before acceptance.
+- Final file writes use atomic renames.
+- Database URLs, peppers, and camera credentials must not be committed.
+- Production systemd units use `ProtectHome=read-only`.
+
+## License
+
+MIT
