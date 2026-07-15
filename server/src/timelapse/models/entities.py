@@ -6,7 +6,8 @@ from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import INET, JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import INET, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from timelapse.models.base import Base

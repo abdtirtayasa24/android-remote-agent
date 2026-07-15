@@ -23,7 +23,7 @@ def run_migrations_offline() -> None:
     settings = get_settings()
 
     context.configure(
-        url=settings.database_url.render_as_string(hide_password=False),
+        url=settings.migration_database_url.render_as_string(hide_password=False),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -35,7 +35,9 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations(connection: Connection) -> None:
+def run_migrations(
+    connection: Connection,
+) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -51,7 +53,8 @@ async def run_migrations_online() -> None:
     settings = get_settings()
 
     connectable = create_async_engine(
-        settings.database_url,
+        settings.migration_database_url,
+        connect_args=settings.database_connect_args,
         poolclass=pool.NullPool,
     )
 

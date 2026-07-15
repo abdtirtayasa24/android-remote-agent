@@ -20,10 +20,12 @@ def get_engine() -> AsyncEngine:
     settings = get_settings()
 
     return create_async_engine(
-        settings.database_url,
+        settings.runtime_database_url,
+        connect_args=settings.database_connect_args,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_timeout=15,
     )
 
 
@@ -34,6 +36,13 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
         class_=AsyncSession,
         expire_on_commit=False,
     )
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    session_factory = get_session_factory()
+
+    async with session_factory() as session:
+        yield session
 
 
 @asynccontextmanager

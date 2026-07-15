@@ -50,12 +50,10 @@ required_variables=(
     PUBLIC_DOMAIN
     LETSENCRYPT_EMAIL
     API_PORT
-    POSTGRES_HOST
-    POSTGRES_PORT
-    POSTGRES_DB
-    POSTGRES_USER
-    POSTGRES_PASSWORD
+    DATABASE_URL
+    DATABASE_MIGRATION_URL
     STORAGE_ROOT
+    CAMERA_TOKEN_PEPPER
 )
 
 for variable_name in "${required_variables[@]}"; do
@@ -81,49 +79,14 @@ if [[ ! "${API_PORT}" =~ ^[0-9]+$ ]] \
     exit 2
 fi
 
-if [[ ! "${POSTGRES_PORT}" =~ ^[0-9]+$ ]] \
-    || ((POSTGRES_PORT < 1 || POSTGRES_PORT > 65535)); then
-    echo "POSTGRES_PORT must be between 1 and 65535." >&2
-    exit 2
-fi
-
-if [[ "${POSTGRES_HOST}" != "127.0.0.1" \
-    && "${POSTGRES_HOST}" != "localhost" ]]; then
-    echo "Native deployment requires local PostgreSQL." >&2
-    echo "Set POSTGRES_HOST to 127.0.0.1 or localhost." >&2
-    exit 2
-fi
-
-identifier_pattern='^[a-z_][a-z0-9_]{0,62}$'
-
-if [[ ! "${POSTGRES_USER}" =~ ${identifier_pattern} ]]; then
-    echo "POSTGRES_USER is not a supported PostgreSQL identifier." >&2
-    exit 2
-fi
-
-if [[ ! "${POSTGRES_DB}" =~ ${identifier_pattern} ]]; then
-    echo "POSTGRES_DB is not a supported PostgreSQL identifier." >&2
-    exit 2
-fi
-
 if [[ "${STORAGE_ROOT}" != "/srv/timelapse" ]]; then
     echo "For this deployment, STORAGE_ROOT must be /srv/timelapse." >&2
-    exit 2
-fi
-
-if [[ "${#POSTGRES_PASSWORD}" -lt 20 ]]; then
-    echo "POSTGRES_PASSWORD must contain at least 20 characters." >&2
     exit 2
 fi
 
 if ! id "$APP_USER" >/dev/null 2>&1; then
     echo "Missing service user: $APP_USER" >&2
     echo "Run infrastructure/bootstrap-ubuntu.sh first." >&2
-    exit 1
-fi
-
-if ! systemctl is-active --quiet postgresql; then
-    echo "PostgreSQL is not active." >&2
     exit 1
 fi
 
@@ -222,114 +185,6 @@ echo "Installing server package and dependencies..."
 chown root:"$APP_GROUP" "${release_directory}/pip-freeze.txt"
 chmod 0640 "${release_directory}/pip-freeze.txt"
 
-echo "Creating or updating the PostgreSQL role and database..."
-
-runuser -u postgres -- env \
-    TIMELAPSE_DB_USER="$POSTGRES_USER" \
-    TIMELAPSE_DB_PASSWORD="$POSTGRES_PASSWORD" \
-    TIMELAPSE_DB_NAME="$POSTGRES_DB" \
-    psql \
-        --set ON_ERROR_STOP=1 \
-        --dbname postgres <<'SQL'
-\getenv db_user TIMELAPSE_DB_USER
-\getenv db_password TIMELAPSE_DB_PASSWORD
-\getenv db_name TIMELAPSE_DB_NAME
-
-SELECT format(
-    'CREATE ROLE %I LOGIN',
-    :'db_user'
-)
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM pg_roles
-    WHERE rolname = :'db_user'
-)
-\gexec
-
-SELECT format(
-    'ALTER ROLE %I WITH LOGIN PASSWORD %L',
-    :'db_user',
-    :'db_password'
-)
-\gexec
-
-SELECT format(
-    'CREATE DATABASE %I OWNER %I',
-    :'db_name',
-    :'db_user'
-)
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM pg_database
-    WHERE datname = :'db_name'
-)
-\gexec
-
-SELECT format(
-    'ALTER DATABASE %I OWNER TO %I',
-    :'db_name',
-    :'db_user'
-)
-\gexec
-SQL
-
-repair_database_ownership() {
-    echo "Ensuring application role owns existing database objects..."
-
-    runuser -u postgres -- \
-        psql \
-            --set ON_ERROR_STOP=1 \
-            --set app_user="$POSTGRES_USER" \
-            --dbname "$POSTGRES_DB" <<'SQL'
-SELECT format(
-    'ALTER DATABASE %I OWNER TO %I',
-    current_database(),
-    :'app_user'
-)
-\gexec
-
-GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";
-
-SELECT format(
-    'ALTER TABLE %I.%I OWNER TO %I',
-    schemaname,
-    tablename,
-    :'app_user'
-)
-FROM pg_tables
-WHERE schemaname = 'public'
-ORDER BY tablename
-\gexec
-
-SELECT format(
-    'ALTER SEQUENCE %I.%I OWNER TO %I',
-    schemaname,
-    sequencename,
-    :'app_user'
-)
-FROM pg_sequences
-WHERE schemaname = 'public'
-ORDER BY sequencename
-\gexec
-
-SELECT format(
-    'ALTER TYPE %I.%I OWNER TO %I',
-    namespace.nspname,
-    type_definition.typname,
-    :'app_user'
-)
-FROM pg_type AS type_definition
-JOIN pg_namespace AS namespace
-    ON namespace.oid = type_definition.typnamespace
-WHERE namespace.nspname = 'public'
-  AND type_definition.typtype IN ('e', 'd')
-ORDER BY type_definition.typname
-\gexec
-SQL
-}
-
-repair_database_ownership
-
 previous_release=""
 
 if [[ -L "$CURRENT_LINK" ]]; then
@@ -344,24 +199,54 @@ systemctl stop \
     timelapse-bot.service \
     2>/dev/null || true
 
-echo "Applying Alembic migrations from the new release..."
+validate_neon_urls() {
+    echo "Validating Neon database URLs..."
+
+    runuser \
+        --user "$APP_USER" \
+        --preserve-environment \
+        -- \
+        "$VIRTUAL_ENVIRONMENT/bin/python" - <<'PY'
+from timelapse.configuration import get_settings
+
+settings = get_settings()
+
+runtime = settings.runtime_database_url
+migration = settings.migration_database_url
+
+if runtime.host is None:
+    raise SystemExit("DATABASE_URL has no host")
+
+if migration.host is None:
+    raise SystemExit("DATABASE_MIGRATION_URL has no host")
+
+if "-pooler." not in runtime.host:
+    raise SystemExit(
+        "DATABASE_URL should use the Neon pooled hostname"
+    )
+
+if "-pooler." in migration.host:
+    raise SystemExit(
+        "DATABASE_MIGRATION_URL must use the direct Neon hostname"
+    )
+
+print("Neon URL configuration is valid.")
+print(f"Runtime host: {runtime.host}")
+print(f"Migration host: {migration.host}")
+PY
+}
+
+echo "Applying Alembic migrations to Neon..."
 
 set +e
 
 (
     cd "${release_directory}/server"
 
-    runuser -u "$APP_USER" -- env \
-        ENVIRONMENT="${ENVIRONMENT:-production}" \
-        LOG_LEVEL="${LOG_LEVEL:-INFO}" \
-        POSTGRES_HOST="$POSTGRES_HOST" \
-        POSTGRES_PORT="$POSTGRES_PORT" \
-        POSTGRES_DB="$POSTGRES_DB" \
-        POSTGRES_USER="$POSTGRES_USER" \
-        POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
-        STORAGE_ROOT="$STORAGE_ROOT" \
-        PYTHONPATH="${release_directory}/server/src" \
-        PYTHONDONTWRITEBYTECODE=1 \
+    runuser \
+        --user "$APP_USER" \
+        --preserve-environment \
+        -- \
         "${VIRTUAL_ENVIRONMENT}/bin/alembic" \
             -c alembic.ini \
             upgrade head

@@ -35,7 +35,6 @@ fail() {
 }
 
 for service_name in \
-    postgresql.service \
     nginx.service \
     timelapse-migrate.service \
     timelapse-api.service \
@@ -91,74 +90,68 @@ else
     pass "API has no wildcard listener"
 fi
 
-postgres_listeners="$(
-    ss -lntH \
-        | awk '$4 ~ /:5432$/ { print $4 }'
-)"
+echo "Checking Neon database connectivity..."
 
-if [[ -n "$postgres_listeners" ]]; then
-    pass "PostgreSQL has a local TCP listener"
-else
-    fail "PostgreSQL has no TCP listener"
-fi
+if runuser \
+    --user ubuntu \
+    --preserve-environment \
+    -- \
+    /opt/android-remote/.venv/bin/python - <<'PY'
+import asyncio
 
-if grep -Eq '(^0\.0\.0\.0:5432$|\[::\]:5432$)' \
-    <<< "$postgres_listeners"
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from timelapse.configuration import get_settings
+
+
+async def main() -> None:
+    settings = get_settings()
+
+    engine = create_async_engine(
+        settings.runtime_database_url,
+        connect_args=settings.database_connect_args,
+        pool_pre_ping=True,
+    )
+
+    try:
+        async with engine.connect() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    SELECT
+                        current_user,
+                        current_database(),
+                        current_setting('server_version')
+                    """
+                )
+            )
+
+            user, database, version = result.one()
+
+            print(f"Database user: {user}")
+            print(f"Database: {database}")
+            print(f"PostgreSQL version: {version}")
+    finally:
+        await engine.dispose()
+
+
+asyncio.run(main())
+PY
 then
-    fail "PostgreSQL has a public wildcard listener"
+    pass "Neon database connection"
 else
-    pass "PostgreSQL has no wildcard listener"
-fi
-
-if PGPASSWORD="$POSTGRES_PASSWORD" \
-    psql \
-        --host "$POSTGRES_HOST" \
-        --port "$POSTGRES_PORT" \
-        --username "$POSTGRES_USER" \
-        --dbname "$POSTGRES_DB" \
-        --no-align \
-        --tuples-only \
-        --command "SELECT 1;" \
-    | grep -qx '1'
-then
-    pass "application database authentication"
-else
-    fail "application database authentication"
-fi
-
-table_count="$(
-    PGPASSWORD="$POSTGRES_PASSWORD" \
-        psql \
-            --host "$POSTGRES_HOST" \
-            --port "$POSTGRES_PORT" \
-            --username "$POSTGRES_USER" \
-            --dbname "$POSTGRES_DB" \
-            --no-align \
-            --tuples-only \
-            --command "
-                SELECT count(*)
-                FROM information_schema.tables
-                WHERE table_schema = 'public';
-            "
-)"
-
-if [[ "$table_count" =~ ^[1-9][0-9]*$ ]]; then
-    pass "database schema contains ${table_count} tables"
-else
-    fail "database schema is empty"
+    fail "Neon database connection"
 fi
 
 if (
-    cd /home/ubuntu/android-remote/server
+    cd /opt/android-remote/current/server
 
-    runuser -u ubuntu -- env \
-        POSTGRES_HOST="$POSTGRES_HOST" \
-        POSTGRES_PORT="$POSTGRES_PORT" \
-        POSTGRES_DB="$POSTGRES_DB" \
-        POSTGRES_USER="$POSTGRES_USER" \
-        POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
-        PYTHONPATH=/home/ubuntu/android-remote/current/server/src \
-        /home/ubuntu/android-remote/.venv/bin/alembic \
+    runuser \
+        --user ubuntu \
+        --preserve-environment \
+        -- \
+        /opt/android-remote/.venv/bin/alembic \
             -c alembic.ini \
             current
 ) | grep -q '20260714_0001'

@@ -30,6 +30,9 @@ dev = [
     "ruff==0.15.21",
 ]
 
+[project.scripts]
+timelapse-credentials = "timelapse.cli.credentials:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

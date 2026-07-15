@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import ssl
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import URL
+from sqlalchemy import URL, make_url
 
 
 class Settings(BaseSettings):
@@ -15,28 +16,89 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    environment: Literal["development", "test", "production"] = "production"
+    environment: Literal[
+        "development",
+        "test",
+        "production",
+    ] = "production"
+
     log_level: str = "INFO"
 
-    postgres_host: str = "127.0.0.1"
-    postgres_port: int = Field(default=5432, ge=1, le=65535)
-    postgres_db: str = "timelapse"
-    postgres_user: str = "timelapse"
-    postgres_password: SecretStr
+    # Use Neon's pooled URL for normal application traffic.
+    database_url: SecretStr
+
+    # Use Neon's direct, non-pooled URL for Alembic.
+    database_migration_url: SecretStr
+
+    database_pool_size: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+    )
+    database_max_overflow: int = Field(
+        default=2,
+        ge=0,
+        le=20,
+    )
+    database_connect_timeout_seconds: int = Field(
+        default=15,
+        ge=1,
+        le=60,
+    )
+
+    camera_token_pepper: SecretStr
+    require_https: bool = True
 
     storage_root: Path = Path("/srv/timelapse")
     public_domain: str | None = None
 
+    @field_validator(
+        "database_url",
+        "database_migration_url",
+    )
+    @classmethod
+    def validate_database_url(
+        cls,
+        value: SecretStr,
+    ) -> SecretStr:
+        parsed = make_url(value.get_secret_value())
+
+        if parsed.get_backend_name() != "postgresql":
+            raise ValueError("database URL must use PostgreSQL")
+
+        if not parsed.host:
+            raise ValueError("database URL must include a host")
+
+        if not parsed.database:
+            raise ValueError("database URL must include a database name")
+
+        return value
+
+    @field_validator("camera_token_pepper")
+    @classmethod
+    def validate_camera_token_pepper(
+        cls,
+        value: SecretStr,
+    ) -> SecretStr:
+        if len(value.get_secret_value()) < 32:
+            raise ValueError("CAMERA_TOKEN_PEPPER must contain at least 32 characters")
+
+        return value
+
     @property
-    def database_url(self) -> URL:
-        return URL.create(
-            drivername="postgresql+asyncpg",
-            username=self.postgres_user,
-            password=self.postgres_password.get_secret_value(),
-            host=self.postgres_host,
-            port=self.postgres_port,
-            database=self.postgres_db,
-        )
+    def runtime_database_url(self) -> URL:
+        return _build_asyncpg_url(self.database_url.get_secret_value())
+
+    @property
+    def migration_database_url(self) -> URL:
+        return _build_asyncpg_url(self.database_migration_url.get_secret_value())
+
+    @property
+    def database_connect_args(self) -> dict[str, object]:
+        return {
+            "ssl": ssl.create_default_context(),
+            "timeout": self.database_connect_timeout_seconds,
+        }
 
     @property
     def images_directory(self) -> Path:
@@ -53,6 +115,24 @@ class Settings(BaseSettings):
     @property
     def temporary_directory(self) -> Path:
         return self.storage_root / "tmp"
+
+
+def _build_asyncpg_url(value: str) -> URL:
+    parsed = make_url(value)
+    parsed = parsed.set(drivername="postgresql+asyncpg")
+
+    # TLS is configured through asyncpg connect_args below.
+    #
+    # channel_binding is supported by some libpq-based drivers,
+    # but is not an asyncpg connection argument. Removing these
+    # URL options avoids them being interpreted as PostgreSQL
+    # session settings.
+    return parsed.difference_update_query(
+        {
+            "sslmode",
+            "channel_binding",
+        }
+    )
 
 
 @lru_cache

@@ -1,8 +1,7 @@
 [Unit]
 Description=Time-lapse Camera Database Migration
 Documentation=man:systemd.service(5)
-Requires=postgresql.service
-After=postgresql.service network-online.target
+After=network-online.target
 Wants=network-online.target
 
 [Service]
@@ -19,12 +18,29 @@ Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/opt/android-remote/current/server/src
 Environment=TZ=UTC
 
+ExecStartPre=/usr/bin/test \
+    -d /opt/android-remote/current/server
+
+ExecStartPre=/usr/bin/test \
+    -r /opt/android-remote/current/server/alembic.ini
+
+ExecStartPre=/usr/bin/test \
+    -r /opt/android-remote/current/server/migrations/env.py
+
+ExecStartPre=/usr/bin/test \
+    -x /opt/android-remote/.venv/bin/alembic
+
 ExecStart=/opt/android-remote/.venv/bin/alembic \
     -c /opt/android-remote/current/server/alembic.ini \
     upgrade head
 
 RemainAfterExit=yes
+TimeoutStartSec=300s
 UMask=0027
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=timelapse-migrate
 
 NoNewPrivileges=true
 PrivateTmp=true

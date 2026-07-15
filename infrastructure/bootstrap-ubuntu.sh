@@ -42,61 +42,16 @@ apt-get install -y \
     certbot \
     curl \
     gettext-base \
-    gnupg \
     libgl1 \
     libglib2.0-0 \
     nginx \
-    postgresql-common \
+    postgresql-client \
     python3.12 \
     python3.12-dev \
     python3.12-venv \
     python3-pip \
     rsync \
     ufw
-
-echo "Configuring the official PostgreSQL APT repository..."
-
-install -d \
-    -o root \
-    -g root \
-    -m 0755 \
-    /usr/share/postgresql-common/pgdg
-
-curl \
-    --fail \
-    --silent \
-    --show-error \
-    --location \
-    --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
-    https://www.postgresql.org/media/keys/ACCC4CF8.asc
-
-cat > /etc/apt/sources.list.d/pgdg.sources <<EOF
-Types: deb
-URIs: https://apt.postgresql.org/pub/repos/apt
-Suites: ${VERSION_CODENAME}-pgdg
-Components: main
-Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
-EOF
-
-apt-get update
-apt-get install -y postgresql-18 postgresql-client-18
-
-if ! pg_lsclusters --no-header \
-    | awk '$1 == "18" && $2 == "main" { found = 1 } END { exit !found }'
-then
-    echo "Creating PostgreSQL 18 main cluster..."
-    pg_createcluster 18 main --start
-fi
-
-install \
-    -o root \
-    -g postgres \
-    -m 0640 \
-    "$SCRIPT_DIRECTORY/postgresql/90-timelapse-small-vps.conf" \
-    /etc/postgresql/18/main/conf.d/90-timelapse-small-vps.conf
-
-systemctl enable postgresql
-systemctl restart postgresql
 
 if ! getent group "$APP_GROUP" >/dev/null; then
     groupadd --system "$APP_GROUP"
@@ -170,13 +125,6 @@ fi
 
 echo
 echo "Bootstrap completed."
-echo
-echo "PostgreSQL:"
-pg_lsclusters
-
-echo
-echo "PostgreSQL listeners:"
-ss -lnt | grep ':5432' || true
 
 echo
 echo "UFW:"

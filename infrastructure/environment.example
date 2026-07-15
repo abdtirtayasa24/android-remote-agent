@@ -11,12 +11,9 @@ LETSENCRYPT_EMAIL=admin@example.com
 API_PORT=8100
 SSH_PORT=22
 
-# PostgreSQL
-POSTGRES_HOST=127.0.0.1
-POSTGRES_PORT=5432
-POSTGRES_DB=timelapse
-POSTGRES_USER=timelapse
-POSTGRES_PASSWORD=replace-with-a-long-random-password
+# Neon PostgreSQL
+DATABASE_URL=
+DATABASE_MIGRATION_URL=
 
 # Filesystem
 STORAGE_ROOT=/srv/timelapse
