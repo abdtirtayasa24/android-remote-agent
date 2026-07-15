@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import hashlib
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -167,7 +166,7 @@ def test_storage_path_ignores_client_filename(
             1,
             2,
             3,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
         capture_id=capture_id,
     )

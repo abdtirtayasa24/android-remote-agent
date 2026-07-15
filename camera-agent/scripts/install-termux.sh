@@ -1,54 +1,59 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
 
-SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-PROJECT_DIRECTORY="$(CDPATH= cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
-TIMELAPSE_HOME="${TIMELAPSE_HOME:-$HOME/timelapse}"
+SCRIPT_DIRECTORY="$(
+    CDPATH= cd -- "$(dirname -- "$0")"
+    pwd
+)"
 
-if [ -z "${PREFIX:-}" ] || [ ! -d "$PREFIX" ]; then
-    echo "This installer must be run inside Termux." >&2
-    exit 1
-fi
+CAMERA_AGENT_DIRECTORY="$(
+    CDPATH= cd -- "${SCRIPT_DIRECTORY}/.."
+    pwd
+)"
 
-echo "Updating Termux package metadata..."
-pkg update
+RUNTIME_DIRECTORY="$HOME/timelapse"
+CONFIG_FILE="${RUNTIME_DIRECTORY}/config.json"
 
-echo "Installing Python, Pillow, and Termux API packages..."
-pkg install -y python python-pip python-pillow termux-api
+pkg update -y
 
-python -m pip install --no-cache-dir -r "$PROJECT_DIRECTORY/requirements.txt"
+pkg install -y \
+    python \
+    python-pip \
+    python-pillow \
+    termux-api
+
+python -m pip install \
+    --disable-pip-version-check \
+    -r "${CAMERA_AGENT_DIRECTORY}/requirements.txt"
 
 mkdir -p \
-    "$TIMELAPSE_HOME/app" \
-    "$TIMELAPSE_HOME/bin" \
-    "$TIMELAPSE_HOME/logs" \
-    "$TIMELAPSE_HOME/run" \
-    "$TIMELAPSE_HOME/validation-captures" \
-    "$HOME/.termux/boot"
+    "${RUNTIME_DIRECTORY}/pending" \
+    "${RUNTIME_DIRECTORY}/tmp" \
+    "${RUNTIME_DIRECTORY}/logs"
 
-rm -rf "$TIMELAPSE_HOME/app/camera_agent"
-cp -R "$PROJECT_DIRECTORY/src/camera_agent" "$TIMELAPSE_HOME/app/camera_agent"
-cp "$PROJECT_DIRECTORY/scripts/start-agent.sh" "$TIMELAPSE_HOME/bin/start-agent.sh"
-cp "$PROJECT_DIRECTORY/scripts/camera-self-test.sh" "$TIMELAPSE_HOME/bin/camera-self-test.sh"
+chmod 700 \
+    "$RUNTIME_DIRECTORY" \
+    "${RUNTIME_DIRECTORY}/pending" \
+    "${RUNTIME_DIRECTORY}/tmp" \
+    "${RUNTIME_DIRECTORY}/logs"
 
-chmod 700 "$TIMELAPSE_HOME/bin/"*.sh
-chmod 700 "$TIMELAPSE_HOME/logs" "$TIMELAPSE_HOME/run"
-
-if [ ! -f "$TIMELAPSE_HOME/config.json" ]; then
-    cp "$PROJECT_DIRECTORY/config.example.json" "$TIMELAPSE_HOME/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cp \
+        "${CAMERA_AGENT_DIRECTORY}/config.example.json" \
+        "$CONFIG_FILE"
 fi
-chmod 600 "$TIMELAPSE_HOME/config.json"
 
-cat > "$HOME/.termux/boot/10-start-camera-agent" <<'EOF'
-#!/data/data/com.termux/files/usr/bin/sh
-exec "$HOME/timelapse/bin/start-agent.sh"
-EOF
-chmod 700 "$HOME/.termux/boot/10-start-camera-agent"
+chmod 600 "$CONFIG_FILE"
 
-echo
-echo "Installed Milestone 1 files under: $TIMELAPSE_HOME"
-echo "Next:"
-echo "  1. Edit $TIMELAPSE_HOME/config.json"
-echo "  2. Run $TIMELAPSE_HOME/bin/camera-self-test.sh info"
-echo "  3. Run $TIMELAPSE_HOME/bin/camera-self-test.sh once <camera-id>"
-echo "  4. Run $TIMELAPSE_HOME/bin/camera-self-test.sh ten <camera-id>"
+python - <<'PY'
+import httpx
+from PIL import Image
+
+print("httpx:", httpx.__version__)
+print("Pillow:", Image.__version__)
+PY
+
+printf '\nInstallation completed.\n'
+printf 'Edit: %s\n' "$CONFIG_FILE"
+printf 'Then run: %s/scripts/start-agent.sh\n' \
+    "$CAMERA_AGENT_DIRECTORY"

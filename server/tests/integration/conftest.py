@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -233,7 +233,7 @@ async def create_camera() -> CameraFactory:
             )
 
             if revoked:
-                credential.revoked_at = datetime.now(timezone.utc)
+                credential.revoked_at = datetime.now(UTC)
 
             session.add(credential)
 

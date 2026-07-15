@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from src.camera_agent.compressor import InvalidCaptureError, normalize_jpeg
+from camera_agent.compressor import InvalidCaptureError, normalize_jpeg
 
 
 class NormalizeJpegTests(unittest.TestCase):

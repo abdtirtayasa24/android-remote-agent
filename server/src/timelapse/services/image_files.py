@@ -11,6 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 from uuid import UUID, uuid4
 
+from anyio import Path as AsyncPath
 from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
 
@@ -129,6 +130,8 @@ async def _stream_upload(
     digest = hashlib.sha256()
     file_size_bytes = 0
 
+    destination_async = AsyncPath(destination)
+
     try:
         with os.fdopen(descriptor, "wb") as output:
             while True:
@@ -151,11 +154,11 @@ async def _stream_upload(
             output.flush()
             os.fsync(output.fileno())
     except Exception:
-        destination.unlink(missing_ok=True)
+        await destination_async.unlink(missing_ok=True)
         raise
 
     if file_size_bytes == 0:
-        destination.unlink(missing_ok=True)
+        await destination_async.unlink(missing_ok=True)
 
         raise UploadRejectedError(
             status_code=422,

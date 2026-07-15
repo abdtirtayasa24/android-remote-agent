@@ -1,10 +1,20 @@
 {
-    "camera_slug": "front-door",
-    "camera_id": 0,
-    "capture_interval_seconds": 60,
-    "maximum_width": 1280,
-    "maximum_height": 720,
-    "jpeg_quality": 72,
-    "capture_timeout_seconds": 30,
-    "output_directory": "$HOME/timelapse/validation-captures"
+  "agent_version": "0.1.0",
+  "api_base_url": "https://camera.example.com",
+  "camera_slug": "front-door",
+  "camera_credential": "cam_replace_with_real_credential",
+  "camera_id": 0,
+  "root_directory": "~/timelapse",
+  "capture_interval_seconds": 60,
+  "heartbeat_interval_seconds": 300,
+  "upload_poll_seconds": 2,
+  "cleanup_interval_seconds": 300,
+  "capture_timeout_seconds": 30,
+  "request_timeout_seconds": 30,
+  "maximum_width": 1280,
+  "maximum_height": 720,
+  "jpeg_quality": 72,
+  "queue_max_bytes": 2147483648,
+  "queue_max_age_hours": 48,
+  "allow_insecure_http": false
 }

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from timelapse.api.heartbeats import router as heartbeats_router
 from timelapse.api.images import router as images_router
 from timelapse.configuration import get_settings
 from timelapse.database import close_database
@@ -38,6 +39,7 @@ app = FastAPI(
 )
 
 app.include_router(images_router)
+app.include_router(heartbeats_router)
 
 
 @app.get(
