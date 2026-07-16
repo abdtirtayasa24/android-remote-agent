@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
@@ -17,9 +16,9 @@ from timelapse.models.entities import (
     MotionAnalysis,
     MotionEvent,
     MotionEventImage,
-    TelegramPrincipal,
 )
 from timelapse.services.telegram_messages import format_motion_alert_caption
+from timelapse.services.telegram_recipients import load_telegram_recipient_chat_ids
 
 LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ async def send_motion_event_alert(
     if sender is None:
         return False
 
-    recipient_chat_ids = await _motion_recipient_chat_ids(
+    recipient_chat_ids = await load_telegram_recipient_chat_ids(
         session=session,
         admin_user_id=admin_user_id,
     )
@@ -182,22 +181,3 @@ async def deliver_pending_motion_alerts_once(
             delivered_count += 1
 
     return delivered_count
-
-
-async def _motion_recipient_chat_ids(
-    *,
-    session: AsyncSession,
-    admin_user_id: int | None,
-) -> Sequence[int]:
-    principals = (
-        await session.scalars(
-            select(TelegramPrincipal).order_by(TelegramPrincipal.telegram_user_id)
-        )
-    ).all()
-    chat_ids = [principal.telegram_chat_id for principal in principals if principal.enabled]
-    known_user_ids = {principal.telegram_user_id for principal in principals}
-
-    if admin_user_id is not None and admin_user_id not in known_user_ids:
-        chat_ids.append(admin_user_id)
-
-    return tuple(dict.fromkeys(chat_ids))

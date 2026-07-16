@@ -56,6 +56,10 @@ CAMERA_TOKEN_PEPPER=replace-with-a-32-byte-random-value
 TELEGRAM_BOT_TOKEN=123456:replace-with-real-token
 TELEGRAM_WEBHOOK_SECRET=replace-with-random-letters-digits-underscore-hyphen
 TELEGRAM_ADMIN_USER_ID=123456789
+DAILY_TIMELAPSE_ENABLED=true
+DAILY_TIMELAPSE_SEND_HOUR_JAKARTA=0
+DAILY_TIMELAPSE_SEND_MINUTE_JAKARTA=10
+DAILY_TIMELAPSE_FRAME_RATE=24
 ```
 
 `TELEGRAM_ADMIN_USER_ID` bootstraps the first administrator. Do not configure or require `TELEGRAM_ADMIN_CHAT_ID`. `TELEGRAM_WEBHOOK_SECRET` is required when the bot token is configured and must contain 1–256 letters, digits, underscores, or hyphens.

@@ -67,6 +67,19 @@ Telegram commands:
 
 Export ZIP parts are stored under `/srv/timelapse/exports` until delivery cleanup. Export ranges are half-open and limited to 24 hours.
 
+## Daily time-lapse videos
+
+At 00:10 Asia/Jakarta by default, the worker snapshots the previous local calendar day's scheduled images for each enabled camera, generates an MP4 with `ffmpeg`, and sends it through Telegram. Successful MP4 files are deleted immediately; job status, size, checksum, and Telegram message ID remain in PostgreSQL.
+
+Check processing and delivery failures in worker logs:
+
+```sh
+journalctl -u timelapse-worker.service -n 200 --no-pager | grep daily_timelapse
+find /srv/timelapse/timelapses -type f -ls
+```
+
+A file may remain while Telegram delivery is retrying. Completed jobs are cleaned without resending after restart. Severe or hard storage pressure defers new generation and removes retained retry MP4s so daily videos cannot bypass disk protection.
+
 ## Retention and reconciliation
 
 The worker runs retention and reconciliation loops:
@@ -88,6 +101,7 @@ journalctl -u timelapse-worker.service -n 200 --no-pager
 df -h /srv/timelapse
 find /srv/timelapse/images -type f | wc -l
 find /srv/timelapse/exports -type f | wc -l
+find /srv/timelapse/timelapses -type f | wc -l
 find /srv/timelapse/quarantine -type f | wc -l
 ```
 

@@ -18,6 +18,7 @@ The project is an Android still-image time-lapse security camera system. An Andr
 - Detect motion by comparing scheduled still images with the previous valid scheduled image.
 - Group motion detections into five-minute events and send only the first image alert.
 - Allow authorized Telegram users to inspect status, retrieve latest images, and request ZIP exports.
+- Generate one MP4 per enabled camera for the previous Asia/Jakarta day, send it automatically through Telegram, and delete the generated file after delivery.
 - Interpret Telegram date/time input in Asia/Jakarta; store and process backend timestamps as UTC.
 - Retain images for seven days by default and protect active exports from retention deletion.
 - Detect and repair or quarantine database/filesystem mismatches.
@@ -69,7 +70,7 @@ The design borrows surveillance concepts from motionEye and Frigate, but deliber
 | ORM/driver | SQLAlchemy asyncio with asyncpg |
 | Migrations | Alembic |
 | Telegram | python-telegram-bot webhook dispatch inside FastAPI |
-| Image processing | OpenCV headless and Pillow |
+| Image/video processing | OpenCV headless, Pillow, and system `ffmpeg` |
 | Dashboard frontend | React, TypeScript, Tailwind, Vite static build under `dashboard/` |
 | Dashboard build runtime | Node.js 22 LTS and npm from NodeSource during deployment only |
 | Testing | Pytest and pytest-asyncio |
@@ -185,6 +186,7 @@ One worker process is enough for MVP scale. It runs independent loops for:
 - motion analysis and motion-event grouping;
 - pending motion alert retry;
 - export ZIP creation and Telegram delivery;
+- daily time-lapse job creation, MP4 generation, Telegram delivery, and immediate MP4 cleanup;
 - retention and emergency cleanup;
 - filesystem reconciliation.
 
@@ -271,6 +273,7 @@ PostgreSQL stores:
 - `telegram_principals`: authorized Telegram users/chats and roles.
 - `alert_states`: persistent health-alert deduplication state.
 - `export_jobs`, `export_job_images`, `export_parts`: export snapshot, ZIP part metadata, and delivery state.
+- `timelapse_video_jobs`, `timelapse_video_job_images`, and `timelapse_video_deliveries`: deterministic daily image snapshots, leased generation state, per-recipient delivery state, and retained MP4 metadata.
 - `audit_events`: security/worker/storage-repair audit trail.
 
 Image storage state values are:
@@ -380,6 +383,17 @@ flowchart LR
 9. Telegram document sends are durable enough that already-sent parts are not resent after restart.
 10. Sent export parts are deleted locally.
 
+### Daily time-lapse videos
+
+1. After 00:10 Asia/Jakarta, the worker creates one idempotent job per enabled camera for the previous local calendar day.
+2. The job snapshots stored scheduled images using a half-open UTC range derived from the Asia/Jakarta day.
+3. `ffmpeg` generates an H.264 MP4 from ordered snapshot frames outside request handlers.
+4. The worker snapshots recipients before creating a job; without recipients, no job or retention protection is created.
+5. Leased claims prevent concurrent workers from processing the same job, and stale claims remain recoverable.
+6. Per-recipient delivery rows are committed after each successful send, so retries skip recipients that already received the video.
+7. Delivery retries reuse an existing generated MP4. A completed job with interrupted cleanup deletes the file without resending.
+8. Severe/hard storage pressure defers generation and deletes retained retry MP4s; failed/oversized artifacts are deleted while size, checksum, status, and stable error code remain in PostgreSQL.
+
 ### Retention, disk protection, and reconciliation
 
 ```mermaid
@@ -401,7 +415,7 @@ flowchart LR
 ```
 
 1. Retention computes expiry from capture time and per-camera retention days.
-2. Retention claims eligible rows and skips active exports and pending/processing motion analyses.
+2. Retention claims eligible rows and skips active exports, active daily video snapshots, and pending/processing motion analyses.
 3. Missing files during retention are treated as successful deletion and audited.
 4. Filesystem deletion errors restore rows to `stored` for retry.
 5. Hard disk pressure rejects new uploads with HTTP 507.

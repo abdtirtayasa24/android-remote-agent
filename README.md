@@ -1,6 +1,6 @@
 # Android Time-Lapse Security Camera
 
-A self-hosted security camera system that turns an Android phone into a scheduled still-image camera. The Android agent runs in Termux, captures JPEG images, queues uploads when offline, and sends images/heartbeats to a FastAPI server on an Ubuntu VPS.
+A self-hosted security camera system that turns an Android phone into a scheduled still-image camera. The Android agent runs in Termux, captures JPEG images, queues uploads when offline, and sends images/heartbeats to a FastAPI server on an Ubuntu VPS. The worker generates an MP4 from each completed Asia/Jakarta day and sends it automatically through Telegram.
 
 For system design details, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). For the current feature inventory, see [`docs/IMPLEMENTED.md`](docs/IMPLEMENTED.md).
 

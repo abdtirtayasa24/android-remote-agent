@@ -202,13 +202,36 @@ Implemented:
 
 Tests cover parsing, snapshot determinism, locked image skip behavior, ZIP manifest, part limit, resume behavior, send/delete interruption, listing, cancellation, and disk pressure rejection.
 
+## Daily Time-Lapse Videos
+
+Implemented:
+
+- One idempotent daily job per enabled camera for the previous Asia/Jakarta calendar day.
+- Asia/Jakarta day conversion to a half-open UTC image range.
+- Deterministic scheduled-image snapshot rows that defer rather than omit locked images.
+- Recipient snapshots that avoid creating jobs when no Telegram destination exists.
+- Stable `no_images` outcome for empty days.
+- H.264 MP4 generation through system `ffmpeg` using ordered staged frames.
+- Stale-aware worker leases that prevent concurrent processing while allowing crash recovery.
+- Per-recipient Telegram delivery rows that prevent duplicate sends after partial failure.
+- Automatic Telegram `sendVideo` delivery to enabled recipients with administrator fallback.
+- Reuse of generated MP4 after transient Telegram delivery failure.
+- Completion persisted before file cleanup so restart cleanup does not resend.
+- Immediate MP4 deletion after successful delivery.
+- Immediate oversized/failed artifact deletion with metadata and stable error code retained.
+- Stable normalization of ffmpeg and filesystem errors.
+- Severe/hard storage-pressure deferral with retained retry artifact cleanup.
+- Active daily video snapshots protected from image retention using batched protection queries.
+
+Tests cover Jakarta date boundaries, idempotent and lock-safe snapshots, empty/no-recipient days, ffmpeg command/output/error handling, PostgreSQL migration upgrade/downgrade, Telegram video transport, per-recipient partial retry, concurrent worker exclusion, send/delete behavior, delivery retry reuse, interrupted cleanup, storage pressure, oversized cleanup, and retention protection.
+
 ## Retention and Storage Protection
 
 Implemented:
 
 - Per-camera retention days.
 - Retention worker deletion of expired eligible images.
-- Active export protection.
+- Active export and daily video snapshot protection.
 - Pending/processing motion-analysis protection.
 - Row locking with `FOR UPDATE SKIP LOCKED` for retention/export race safety.
 - Missing file during retention treated as successful tombstone and audit.
@@ -245,6 +268,7 @@ Implemented infrastructure:
 - `verify-foundation.sh` for deployment foundation verification.
 - Nginx HTTP and HTTPS templates.
 - systemd units for API-hosted Telegram webhook, worker, migration, and target.
+- `ffmpeg` installation and `/srv/timelapse/timelapses` storage preparation for daily videos.
 - `camera-admin.sh` wrapper for installed credential CLI.
 - `infrastructure/environment.example` with safe placeholders.
 

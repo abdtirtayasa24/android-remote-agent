@@ -99,6 +99,7 @@ install -d \
     /srv/timelapse \
     /srv/timelapse/images \
     /srv/timelapse/exports \
+    /srv/timelapse/timelapses \
     /srv/timelapse/quarantine \
     /srv/timelapse/tmp
 

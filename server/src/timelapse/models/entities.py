@@ -485,6 +485,109 @@ class TelegramPrincipal(Base):
     )
 
 
+class TimelapseVideoJob(Base):
+    __tablename__ = "timelapse_video_jobs"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "camera_id",
+            "local_date_jakarta",
+            name="uq_timelapse_video_jobs_camera_date",
+        ),
+        sa.CheckConstraint(
+            "end_at_utc > start_at_utc",
+            name="ck_timelapse_video_jobs_order",
+        ),
+    )
+
+    id: Mapped[UUID] = uuid_primary_key()
+    camera_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("cameras.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    local_date_jakarta: Mapped[date] = mapped_column(sa.Date, nullable=False)
+    start_at_utc: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+    )
+    end_at_utc: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+    )
+    status: Mapped[JobStatus] = mapped_column(
+        JOB_STATUS_DB,
+        nullable=False,
+        server_default=JobStatus.PENDING.value,
+    )
+    image_count: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        server_default="0",
+    )
+    storage_path: Mapped[str | None] = mapped_column(sa.Text)
+    file_size_bytes: Mapped[int | None] = mapped_column(sa.BigInteger)
+    sha256: Mapped[str | None] = mapped_column(sa.CHAR(64))
+    telegram_message_id: Mapped[int | None] = mapped_column(sa.BigInteger)
+    claimed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    file_deleted_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    error_code: Mapped[str | None] = mapped_column(sa.Text)
+
+
+class TimelapseVideoDelivery(Base):
+    __tablename__ = "timelapse_video_deliveries"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "status IN ('pending', 'sent')",
+            name="ck_timelapse_video_deliveries_status",
+        ),
+    )
+
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("timelapse_video_jobs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    telegram_chat_id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True)
+    status: Mapped[str] = mapped_column(
+        sa.Text,
+        nullable=False,
+        server_default="pending",
+    )
+    telegram_message_id: Mapped[int | None] = mapped_column(sa.BigInteger)
+    sent_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    error_code: Mapped[str | None] = mapped_column(sa.Text)
+
+
+class TimelapseVideoJobImage(Base):
+    __tablename__ = "timelapse_video_job_images"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "job_id",
+            "ordinal",
+            name="uq_timelapse_video_job_images_ordinal",
+        ),
+    )
+
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("timelapse_video_jobs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    image_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("images.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    ordinal: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+
+
 class ExportJob(Base):
     __tablename__ = "export_jobs"
     __table_args__ = (
@@ -674,4 +777,23 @@ sa.Index(
     AlertState.camera_id,
     AlertState.alert_type,
     postgresql_where=AlertState.is_active.is_(True),
+)
+
+sa.Index(
+    "idx_timelapse_video_deliveries_pending",
+    TimelapseVideoDelivery.status,
+    TimelapseVideoDelivery.job_id,
+    postgresql_where=sa.text("status = 'pending'"),
+)
+
+sa.Index(
+    "idx_timelapse_video_job_images_image",
+    TimelapseVideoJobImage.image_id,
+)
+
+sa.Index(
+    "idx_timelapse_video_jobs_pending",
+    TimelapseVideoJob.status,
+    TimelapseVideoJob.created_at,
+    postgresql_where=sa.text("status IN ('pending', 'processing', 'uploading')"),
 )

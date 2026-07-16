@@ -16,13 +16,13 @@ from timelapse.models.entities import (
     AuditEvent,
     Camera,
     CameraHeartbeat,
-    TelegramPrincipal,
 )
 from timelapse.models.enums import CameraHealthState
 from timelapse.services.telegram_messages import (
     format_health_alert_message,
     format_health_recovery_message,
 )
+from timelapse.services.telegram_recipients import load_telegram_recipient_chat_ids
 
 ONLINE_WINDOW = timedelta(minutes=10)
 OFFLINE_AFTER = timedelta(minutes=15)
@@ -333,7 +333,7 @@ async def _send_to_alert_recipients(
             outcome="skipped_no_sender",
         )
 
-    recipient_chat_ids = await _alert_recipient_chat_ids(
+    recipient_chat_ids = await load_telegram_recipient_chat_ids(
         session=session,
         admin_user_id=admin_user_id,
     )
@@ -367,25 +367,6 @@ async def _send_to_alert_recipients(
         )
 
     return AlertDeliveryResult(delivered=True, message_id=message_id, outcome="sent")
-
-
-async def _alert_recipient_chat_ids(
-    *,
-    session: AsyncSession,
-    admin_user_id: int | None,
-) -> tuple[int, ...]:
-    principals = (
-        await session.scalars(
-            select(TelegramPrincipal).order_by(TelegramPrincipal.telegram_user_id)
-        )
-    ).all()
-    chat_ids = [principal.telegram_chat_id for principal in principals if principal.enabled]
-    known_user_ids = {principal.telegram_user_id for principal in principals}
-
-    if admin_user_id is not None and admin_user_id not in known_user_ids:
-        chat_ids.append(admin_user_id)
-
-    return tuple(dict.fromkeys(chat_ids))
 
 
 def _record_alert_audit(

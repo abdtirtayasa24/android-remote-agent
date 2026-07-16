@@ -145,6 +145,22 @@ Constraints:
 
 Retention must protect images referenced by active/pending/processing/uploading video jobs.
 
+### New table: `timelapse_video_deliveries`
+
+Per-recipient delivery state prevents successful recipients from receiving duplicate videos when a later recipient fails:
+
+- `job_id`
+- `telegram_chat_id`
+- `status`: `pending` or `sent`
+- `telegram_message_id`
+- `sent_at`
+- `error_code`
+
+Constraints/indexes:
+
+- primary key `(job_id, telegram_chat_id)`
+- partial pending-delivery index
+
 ### New table: `camera_commands`
 
 Suggested columns:

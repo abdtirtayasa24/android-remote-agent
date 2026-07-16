@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     health_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
     heartbeat_aggregation_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     motion_worker_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    daily_timelapse_enabled: bool = True
+    daily_timelapse_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
+    daily_timelapse_send_hour_jakarta: int = Field(default=0, ge=0, le=23)
+    daily_timelapse_send_minute_jakarta: int = Field(default=10, ge=0, le=59)
+    daily_timelapse_frame_rate: int = Field(default=24, ge=1, le=60)
     retention_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     reconciliation_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
 
@@ -118,6 +123,10 @@ class Settings(BaseSettings):
     @property
     def exports_directory(self) -> Path:
         return self.storage_root / "exports"
+
+    @property
+    def timelapses_directory(self) -> Path:
+        return self.storage_root / "timelapses"
 
     @property
     def quarantine_directory(self) -> Path:

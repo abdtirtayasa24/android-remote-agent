@@ -7,8 +7,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
-from timelapse.database import get_session_factory, session_scope
+from sqlalchemy import event, func, select
+from timelapse.database import get_engine, get_session_factory, session_scope
 from timelapse.models.entities import (
     AuditEvent,
     Camera,
@@ -16,6 +16,8 @@ from timelapse.models.entities import (
     ExportJobImage,
     Image,
     MotionAnalysis,
+    TimelapseVideoJob,
+    TimelapseVideoJobImage,
 )
 from timelapse.models.enums import AnalysisStatus, CaptureSource, ImageStorageState, JobStatus
 from timelapse.services.retention import process_retention_once
@@ -97,6 +99,51 @@ async def test_retention_deletes_expired_image_and_tombstones_metadata(
     assert audit_count == 1
 
 
+async def test_retention_protection_queries_are_batched(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera = await create_camera(slug="front-door")
+    camera_id = await get_camera_id(camera.slug)
+
+    for offset in range(5):
+        await add_image(
+            camera_id=camera_id,
+            storage_root=tmp_path,
+            captured_at=NOW - timedelta(days=8, minutes=offset),
+        )
+
+    select_count = 0
+    engine = get_engine().sync_engine
+
+    def count_selects(
+        connection,
+        cursor,
+        statement: str,
+        parameters,
+        context,
+        executemany: bool,
+    ) -> None:
+        del connection, cursor, parameters, context, executemany
+        nonlocal select_count
+        if statement.lstrip().upper().startswith("SELECT"):
+            select_count += 1
+
+    event.listen(engine, "before_cursor_execute", count_selects)
+    try:
+        async with session_scope() as session:
+            deleted_count = await process_retention_once(
+                session=session,
+                now=NOW,
+                batch_size=5,
+            )
+    finally:
+        event.remove(engine, "before_cursor_execute", count_selects)
+
+    assert deleted_count == 5
+    assert select_count <= 4
+
+
 async def test_retention_skips_locked_images(
     create_camera,
     tmp_path: Path,
@@ -169,6 +216,85 @@ async def test_retention_keeps_images_referenced_by_active_export(
     assert await asyncio.to_thread(Path(active.storage_path).exists)
     assert stored_image.storage_state == ImageStorageState.STORED
     assert stored_image.deleted_at is None
+
+
+async def test_retention_keeps_images_referenced_by_active_video_job(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera = await create_camera(slug="front-door")
+    camera_id = await get_camera_id(camera.slug)
+    active = await add_image(
+        camera_id=camera_id,
+        storage_root=tmp_path,
+        captured_at=NOW - timedelta(days=8),
+    )
+
+    async with session_scope() as session:
+        job = TimelapseVideoJob(
+            camera_id=camera_id,
+            local_date_jakarta=(NOW - timedelta(days=8)).date(),
+            start_at_utc=NOW - timedelta(days=8, hours=1),
+            end_at_utc=NOW - timedelta(days=8) + timedelta(hours=1),
+            status=JobStatus.PROCESSING,
+            image_count=1,
+        )
+        session.add(job)
+        await session.flush()
+        session.add(TimelapseVideoJobImage(job_id=job.id, image_id=active.id, ordinal=1))
+
+    async with session_scope() as session:
+        deleted_count = await process_retention_once(
+            session=session,
+            now=NOW,
+            batch_size=10,
+        )
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        stored_image = await session.get(Image, active.id)
+
+    assert deleted_count == 0
+    assert await asyncio.to_thread(Path(active.storage_path).exists)
+    assert stored_image.storage_state == ImageStorageState.STORED
+    assert stored_image.deleted_at is None
+
+
+async def test_retention_deletes_image_referenced_only_by_completed_video_job(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera = await create_camera(slug="front-door")
+    camera_id = await get_camera_id(camera.slug)
+    expired = await add_image(
+        camera_id=camera_id,
+        storage_root=tmp_path,
+        captured_at=NOW - timedelta(days=8),
+    )
+
+    async with session_scope() as session:
+        job = TimelapseVideoJob(
+            camera_id=camera_id,
+            local_date_jakarta=(NOW - timedelta(days=8)).date(),
+            start_at_utc=NOW - timedelta(days=8, hours=1),
+            end_at_utc=NOW - timedelta(days=8) + timedelta(hours=1),
+            status=JobStatus.COMPLETED,
+            image_count=1,
+            completed_at=NOW - timedelta(days=7),
+        )
+        session.add(job)
+        await session.flush()
+        session.add(TimelapseVideoJobImage(job_id=job.id, image_id=expired.id, ordinal=1))
+
+    async with session_scope() as session:
+        deleted_count = await process_retention_once(
+            session=session,
+            now=NOW,
+            batch_size=10,
+        )
+
+    assert deleted_count == 1
+    assert not await asyncio.to_thread(Path(expired.storage_path).exists)
 
 
 async def test_retention_treats_missing_file_as_success(

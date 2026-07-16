@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from timelapse.models.entities import (
     ExportJobImage,
     Image,
     MotionAnalysis,
+    TimelapseVideoJob,
+    TimelapseVideoJobImage,
 )
 from timelapse.models.enums import (
     AnalysisStatus,
@@ -25,6 +28,11 @@ from timelapse.models.enums import (
 from timelapse.services.storage_pressure import StoragePressureState
 
 ACTIVE_EXPORT_STATUSES = {
+    JobStatus.PENDING,
+    JobStatus.PROCESSING,
+    JobStatus.UPLOADING,
+}
+ACTIVE_VIDEO_STATUSES = {
     JobStatus.PENDING,
     JobStatus.PROCESSING,
     JobStatus.UPLOADING,
@@ -118,12 +126,17 @@ async def _load_retention_candidates(
     ).all()
 
     candidates: list[Image] = []
+    protected_image_ids = await _load_protected_image_ids(
+        session=session,
+        image_ids=[image.id for image, _camera in rows],
+        now=now,
+    )
 
     for image, camera in rows:
         retention_cutoff = now - timedelta(days=camera.retention_days)
         if image.captured_at_utc >= retention_cutoff:
             continue
-        if await _is_protected(session=session, image=image, now=now):
+        if image.id in protected_image_ids:
             continue
 
         candidates.append(image)
@@ -151,9 +164,14 @@ async def _load_emergency_cleanup_candidates(
     ).all()
 
     candidates: list[Image] = []
+    protected_image_ids = await _load_protected_image_ids(
+        session=session,
+        image_ids=[image.id for image in rows],
+        now=None,
+    )
 
     for image in rows:
-        if await _is_protected(session=session, image=image, now=None):
+        if image.id in protected_image_ids:
             continue
 
         candidates.append(image)
@@ -163,38 +181,45 @@ async def _load_emergency_cleanup_candidates(
     return candidates
 
 
-async def _is_protected(
+async def _load_protected_image_ids(
     *,
     session: AsyncSession,
-    image: Image,
+    image_ids: list[UUID],
     now: datetime | None,
-) -> bool:
+) -> set[UUID]:
+    if not image_ids:
+        return set()
+
     export_query = (
         select(ExportJobImage.image_id)
         .join(ExportJob, ExportJob.id == ExportJobImage.export_job_id)
-        .where(ExportJobImage.image_id == image.id)
+        .where(ExportJobImage.image_id.in_(image_ids))
         .where(ExportJob.status.in_(ACTIVE_EXPORT_STATUSES))
-        .limit(1)
     )
 
     if now is not None:
         export_query = export_query.where(ExportJob.expires_at > now)
 
-    if await session.scalar(export_query) is not None:
-        return True
-
-    if (
-        await session.scalar(
-            select(MotionAnalysis.image_id)
-            .where(MotionAnalysis.image_id == image.id)
-            .where(MotionAnalysis.status.in_(ACTIVE_ANALYSIS_STATUSES))
-            .limit(1)
+    export_image_ids = set(await session.scalars(export_query))
+    video_image_ids = set(
+        await session.scalars(
+            select(TimelapseVideoJobImage.image_id)
+            .join(
+                TimelapseVideoJob,
+                TimelapseVideoJob.id == TimelapseVideoJobImage.job_id,
+            )
+            .where(TimelapseVideoJobImage.image_id.in_(image_ids))
+            .where(TimelapseVideoJob.status.in_(ACTIVE_VIDEO_STATUSES))
         )
-        is not None
-    ):
-        return True
-
-    return False
+    )
+    analysis_image_ids = set(
+        await session.scalars(
+            select(MotionAnalysis.image_id)
+            .where(MotionAnalysis.image_id.in_(image_ids))
+            .where(MotionAnalysis.status.in_(ACTIVE_ANALYSIS_STATUSES))
+        )
+    )
+    return export_image_ids | video_image_ids | analysis_image_ids
 
 
 async def _delete_image_file_and_tombstone(

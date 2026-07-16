@@ -162,15 +162,15 @@
 **Description:** Add database models and Alembic migration for daily video jobs and video job image snapshots.
 
 **Acceptance criteria:**
-- [ ] `timelapse_video_jobs` table exists.
-- [ ] `timelapse_video_job_images` table exists.
-- [ ] Unique camera/date constraint prevents duplicate daily jobs.
-- [ ] Worker-claiming indexes exist.
-- [ ] SQLAlchemy models and schema metadata tests are updated.
+- [x] `timelapse_video_jobs` table exists.
+- [x] `timelapse_video_job_images` and `timelapse_video_deliveries` tables exist.
+- [x] Unique camera/date constraint prevents duplicate daily jobs.
+- [x] Worker-claiming indexes exist.
+- [x] SQLAlchemy models and schema metadata tests are updated.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit/test_schema_metadata.py -q`
-- [ ] Integration migration tests pass when `TEST_DATABASE_URL` is configured.
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_schema_metadata.py -q`
+- [x] Transactional PostgreSQL migration-chain test covers upgrade and downgrade through `20260717_0003`.
 
 **Dependencies:** None
 
@@ -189,14 +189,14 @@
 **Description:** Create a service that creates one previous-day Asia/Jakarta video job per enabled camera and snapshots stored scheduled images in UTC order.
 
 **Acceptance criteria:**
-- [ ] Previous Asia/Jakarta day is converted to correct UTC range.
-- [ ] Job creation is idempotent.
-- [ ] Snapshot image ordering is deterministic.
-- [ ] Empty image days are handled with stable status/error code.
+- [x] Previous Asia/Jakarta day is converted to correct UTC range.
+- [x] Job creation is idempotent.
+- [x] Snapshot image ordering is deterministic.
+- [x] Empty image days are handled with stable status/error code.
 
 **Verification:**
-- [ ] Focused unit tests for date-window logic.
-- [ ] Integration tests for idempotent job creation and snapshots.
+- [x] Focused date-window behavior is covered by integration tests.
+- [x] Integration tests for idempotent job creation and snapshots.
 
 **Dependencies:** Task 7
 
@@ -214,15 +214,15 @@
 **Description:** Generate MP4 files from snapshot images using `ffmpeg` in a temporary directory with atomic finalization.
 
 **Acceptance criteria:**
-- [ ] `ffmpeg` is invoked through argument lists, not shell strings.
-- [ ] Images are ordered by snapshot ordinal.
-- [ ] Generated MP4 metadata includes size and SHA-256.
-- [ ] Failure paths produce stable error codes.
-- [ ] Temporary files are cleaned up.
+- [x] `ffmpeg` is invoked through argument lists, not shell strings.
+- [x] Images are ordered by snapshot ordinal.
+- [x] Generated MP4 metadata includes size and SHA-256.
+- [x] Failure paths produce stable error codes.
+- [x] Temporary files are cleaned up.
 
 **Verification:**
-- [ ] Unit tests for command construction and failure handling.
-- [ ] Optional integration test skipped when `ffmpeg` is unavailable.
+- [x] Unit tests for command construction and failure handling.
+- [x] Real local `ffmpeg` generation check passed with two JPEG frames.
 
 **Dependencies:** Task 8
 
@@ -241,15 +241,17 @@
 **Description:** Add worker processing that claims video jobs, generates MP4s, sends them via Telegram, then deletes files immediately after successful delivery.
 
 **Acceptance criteria:**
-- [ ] Worker claims pending/processing jobs safely with row locks.
-- [ ] MP4 is sent once per completed job.
-- [ ] Restart after send does not resend completed videos.
-- [ ] MP4 file is deleted immediately after successful send.
-- [ ] Job metadata remains for dashboard/history.
+- [x] Worker uses stale-aware leases to claim pending/processing jobs safely.
+- [x] Per-recipient delivery state prevents duplicate sends after partial failure.
+- [x] Storage pressure defers generation and removes retained retry artifacts.
+- [x] MP4 is sent once per completed job.
+- [x] Restart after send does not resend completed videos.
+- [x] MP4 file is deleted immediately after successful send.
+- [x] Job metadata remains for dashboard/history.
 
 **Verification:**
-- [ ] Integration tests for generate/send/delete/resume behavior.
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_timelapse_video_worker.py -q`
+- [x] Integration tests for generate/send/delete/resume behavior.
+- [x] `cd server && ../.venv/bin/pytest tests/integration/test_timelapse_video_worker.py -q`
 
 **Dependencies:** Task 9
 
@@ -269,12 +271,12 @@
 **Description:** Ensure retention does not delete images referenced by active daily video jobs.
 
 **Acceptance criteria:**
-- [ ] Images referenced by pending/processing/uploading video jobs are protected.
-- [ ] Completed/failed old jobs do not permanently block retention.
-- [ ] Tests cover retention/video race cases.
+- [x] Images referenced by pending/processing/uploading video jobs are protected.
+- [x] Completed/failed old jobs do not permanently block retention.
+- [x] Tests cover retention/video race cases.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_retention.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/integration/test_retention.py -q`
 
 **Dependencies:** Task 7
 

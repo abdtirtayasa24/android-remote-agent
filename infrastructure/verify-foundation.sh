@@ -153,7 +153,7 @@ if (
         /opt/android-remote/.venv/bin/alembic \
             -c alembic.ini \
             current
-) | grep -q '20260714_0001'
+) | grep -q '20260717_0003'
 then
     pass "Alembic revision is current"
 else

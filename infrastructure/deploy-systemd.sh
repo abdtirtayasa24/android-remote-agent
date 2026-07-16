@@ -143,6 +143,7 @@ install -d \
     "$STORAGE_ROOT" \
     "$STORAGE_ROOT/images" \
     "$STORAGE_ROOT/exports" \
+    "$STORAGE_ROOT/timelapses" \
     "$STORAGE_ROOT/quarantine" \
     "$STORAGE_ROOT/tmp"
 

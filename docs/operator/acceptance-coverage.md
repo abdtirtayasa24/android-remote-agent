@@ -22,6 +22,7 @@ This document maps Must Have MVP behavior to Automated or Manual acceptance chec
 | Telegram timezone | User-facing Telegram times are Asia/Jakarta | Automated | `server/tests/unit/test_telegram_messages.py`, `server/tests/integration/test_telegram_commands.py` |
 | Export request | `/images` accepts Asia/Jakarta input and snapshots UTC ranges | Automated | `server/tests/unit/test_export_date_parser.py`, `server/tests/integration/test_export_snapshot.py` |
 | Export worker | ZIP manifest, part splitting, resume, and deletion are safe | Automated | `server/tests/unit/test_export_zip.py`, `server/tests/integration/test_export_worker.py` |
+| Daily time-lapse | Previous Asia/Jakarta day is snapshotted, generated, delivered, retried, and deleted safely | Automated | `server/tests/unit/test_timelapse_video_generator.py`, `server/tests/integration/test_timelapse_video_requests.py`, `server/tests/integration/test_timelapse_video_worker.py` |
 | Export operations | `/exports` and `/cancel` enforce ownership/admin rules | Automated | `server/tests/integration/test_export_commands.py` |
 | Retention | Expired eligible images are deleted without breaking active exports | Automated | `server/tests/integration/test_retention.py` |
 | Disk protection | Hard disk pressure rejects uploads and severe pressure rejects exports | Automated | `server/tests/unit/test_storage_pressure.py`, `server/tests/integration/test_disk_pressure.py` |

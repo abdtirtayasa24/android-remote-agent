@@ -15,6 +15,9 @@ EXPECTED_TABLES = {
     "motion_event_images",
     "motion_events",
     "telegram_principals",
+    "timelapse_video_deliveries",
+    "timelapse_video_job_images",
+    "timelapse_video_jobs",
 }
 
 
@@ -35,4 +38,7 @@ def test_required_partial_indexes_are_registered() -> None:
         "idx_camera_heartbeats_camera_received",
         "idx_alert_states_active",
         "idx_heartbeat_daily_summaries_camera_date",
+        "idx_timelapse_video_jobs_pending",
+        "idx_timelapse_video_job_images_image",
+        "idx_timelapse_video_deliveries_pending",
     }.issubset(index_names)

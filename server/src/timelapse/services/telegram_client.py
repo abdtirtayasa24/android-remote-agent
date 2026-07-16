@@ -57,6 +57,27 @@ class TelegramClient:
 
         return _message_id(response)
 
+    async def send_video(
+        self,
+        *,
+        chat_id: int,
+        video_path: Path,
+        caption: str | None = None,
+    ) -> int | None:
+        data: dict[str, Any] = {"chat_id": chat_id}
+
+        if caption is not None:
+            data["caption"] = caption
+
+        with video_path.open("rb") as video:
+            response = await self._post(
+                "sendVideo",
+                data=data,
+                files={"video": (video_path.name, video, "video/mp4")},
+            )
+
+        return _message_id(response)
+
     async def send_document(
         self,
         *,

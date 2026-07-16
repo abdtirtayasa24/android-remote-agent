@@ -1,10 +1,37 @@
 from __future__ import annotations
 
 import traceback
+from pathlib import Path
 
 import httpx
 import pytest
 from timelapse.services.telegram_client import TelegramClient, TelegramClientError
+
+
+class RecordingAsyncClient:
+    requests: list[tuple[str, dict[str, object]]] = []
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    async def __aenter__(self) -> RecordingAsyncClient:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: object,
+        exc: object,
+        traceback: object,
+    ) -> None:
+        pass
+
+    async def post(self, url: str, **kwargs: object) -> httpx.Response:
+        self.requests.append((url, kwargs))
+        return httpx.Response(
+            200,
+            request=httpx.Request("POST", url),
+            json={"ok": True, "result": {"message_id": 42}},
+        )
 
 
 class FailingAsyncClient:
@@ -25,6 +52,30 @@ class FailingAsyncClient:
     async def post(self, url: str, **kwargs: object) -> httpx.Response:
         request = httpx.Request("POST", url)
         raise httpx.ConnectError(f"failed to connect to {url}", request=request)
+
+
+async def test_telegram_client_sends_mp4_video(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    RecordingAsyncClient.requests = []
+    monkeypatch.setattr(httpx, "AsyncClient", RecordingAsyncClient)
+    video_path = tmp_path / "daily.mp4"
+    video_path.write_bytes(b"mp4")
+    client = TelegramClient(bot_token="123456:test-token")  # noqa: S106
+
+    message_id = await client.send_video(
+        chat_id=123456,
+        video_path=video_path,
+        caption="Daily video",
+    )
+
+    assert message_id == 42
+    url, kwargs = RecordingAsyncClient.requests[0]
+    assert url.endswith("/sendVideo")
+    assert kwargs["data"] == {"chat_id": 123456, "caption": "Daily video"}
+    assert kwargs["files"]["video"][0] == "daily.mp4"
+    assert kwargs["files"]["video"][2] == "video/mp4"
 
 
 async def test_telegram_client_errors_do_not_expose_bot_token(
