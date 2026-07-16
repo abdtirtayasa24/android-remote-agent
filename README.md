@@ -4,6 +4,16 @@ A self-hosted security camera system that turns an Android phone into a schedule
 
 For system design details, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+Operator documentation:
+
+- [`docs/operator/server-installation.md`](docs/operator/server-installation.md)
+- [`docs/operator/android-installation.md`](docs/operator/android-installation.md)
+- [`docs/operator/credential-rotation.md`](docs/operator/credential-rotation.md)
+- [`docs/operator/operations.md`](docs/operator/operations.md)
+- [`docs/operator/incident-recovery.md`](docs/operator/incident-recovery.md)
+- [`docs/operator/acceptance-coverage.md`](docs/operator/acceptance-coverage.md)
+- [`docs/operator/soak-test-report.md`](docs/operator/soak-test-report.md)
+
 ## Repository Structure
 
 ```text

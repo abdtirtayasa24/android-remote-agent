@@ -104,13 +104,13 @@ Quality gate cleanup
 - [x] Missing files, orphaned files, checksum mismatches, old staging rows, and stale temp files are detected
 
 ### Phase 5: Milestone 9 — QA and Handover
-- [ ] Task 19: Complete automated coverage for MVP acceptance scenarios
-- [ ] Task 20: Update operations, credential rotation, and incident recovery docs
+- [x] Task 19: Complete automated coverage for MVP acceptance scenarios
+- [x] Task 20: Update operations, credential rotation, and incident recovery docs
 - [ ] Task 21: Run 24-hour MVP and seven-day soak-test checklist
 
 ### Checkpoint: Complete MVP
-- [ ] All relevant unit/integration tests pass
-- [ ] Shared Ruff check and format check pass
+- [x] All relevant unit/integration tests pass
+- [x] Shared Ruff check and format check pass
 - [ ] Fresh VPS deployment succeeds from docs/scripts
 - [ ] Android device can be registered without source changes
 - [ ] Seven-day soak test passes with no critical consistency defect

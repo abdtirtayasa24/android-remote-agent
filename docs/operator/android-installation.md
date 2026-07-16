@@ -310,19 +310,13 @@ Stop a manually started foreground process with `Ctrl+C`.
 
 ## Local automated test
 
-From the repository's `camera-agent` directory:
+From the repository root, using the project virtual environment:
 
 ```sh
-PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q
 ```
 
-Expected result:
-
-```text
-Ran 2 tests
-
-OK
-```
+Expected result: all camera-agent tests pass.
 
 ## Required Milestone 1 evidence
 

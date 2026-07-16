@@ -444,13 +444,14 @@
 **Description:** Fill remaining automated test gaps from the spec's minimum test suite, prioritizing auth, exports, retention, motion, and worker recovery.
 
 **Acceptance criteria:**
-- [ ] Each Must Have requirement has at least one automated or documented manual acceptance check.
-- [ ] Integration tests skip safely when `TEST_DATABASE_URL` is missing.
-- [ ] Regression tests cover all implemented critical failure behaviors.
+- [x] Each Must Have requirement has at least one automated or documented manual acceptance check.
+- [x] Integration tests skip safely when `TEST_DATABASE_URL` is missing.
+- [x] Regression tests cover all implemented critical failure behaviors.
 
 **Verification:**
-- [ ] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
-- [ ] `cd server && ../.venv/bin/pytest -q`
+- [x] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
+- [x] `cd server && ../.venv/bin/pytest -q`
+- [x] `cd server && env -u TEST_DATABASE_URL -u TEST_DATABASE_MIGRATION_URL ../.venv/bin/pytest tests/integration -q`
 
 **Dependencies:** Tasks 1-18
 
@@ -468,23 +469,24 @@
 **Description:** Add operator documentation for systemd deployment, camera registration, Telegram principal setup, credential rotation, alerts, exports, retention, and recovery procedures.
 
 **Acceptance criteria:**
-- [ ] Fresh VPS deployment can be followed from docs.
-- [ ] New Android phone registration requires no source changes.
-- [ ] Credential rotation procedure preserves overlap and revocation.
-- [ ] Incident recovery covers DB/file mismatch, disk pressure, and failed exports.
+- [x] Fresh VPS deployment can be followed from docs.
+- [x] New Android phone registration requires no source changes.
+- [x] Credential rotation procedure preserves overlap and revocation.
+- [x] Incident recovery covers DB/file mismatch, disk pressure, and failed exports.
 
 **Verification:**
-- [ ] Manual documentation review against scripts and commands
+- [x] Manual documentation review against scripts and commands
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_documentation_links.py -q`
 
 **Dependencies:** Tasks 5, 11, 14, 16, 18
 
 **Files likely touched:**
 - `README.md`
-- `docs/android-installation.md`
-- `docs/server-installation.md`
-- `docs/credential-rotation.md`
-- `docs/operations.md`
-- `docs/incident-recovery.md`
+- `docs/operator/android-installation.md`
+- `docs/operator/server-installation.md`
+- `docs/operator/credential-rotation.md`
+- `docs/operator/operations.md`
+- `docs/operator/incident-recovery.md`
 
 **Estimated scope:** Medium
 
@@ -500,12 +502,13 @@
 - [ ] No critical consistency, unauthorized access, unrecoverable job, or duplicate capture defect remains unresolved.
 
 **Verification:**
-- [ ] Documented soak-test report with commands, timestamps, and results
+- [x] Soak-test report template with commands and required evidence created
+- [ ] Documented soak-test report with real commands, timestamps, and results
 
 **Dependencies:** Tasks 1-20
 
 **Files likely touched:**
-- `docs/soak-test-report.md`
+- `docs/operator/soak-test-report.md`
 - `docs/SPEC-1-Android-Time-Lapse-Security-Camera.md`
 
 **Estimated scope:** Medium
