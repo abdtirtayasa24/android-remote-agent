@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,46 @@ class TelegramClient:
     @property
     def base_url(self) -> str:
         return f"https://api.telegram.org/bot{self.bot_token}"
+
+    async def download_file(
+        self,
+        *,
+        file_id: str,
+        destination: Path,
+        maximum_bytes: int = 5 * 1024 * 1024,
+    ) -> None:
+        metadata = await self._post("getFile", json={"file_id": file_id})
+        result = metadata.get("result")
+        file_path = result.get("file_path") if isinstance(result, dict) else None
+
+        if not isinstance(file_path, str) or not file_path:
+            raise TelegramClientError("Telegram file metadata is invalid")
+
+        chunks: list[bytes] = []
+        downloaded_bytes = 0
+        file_url = f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}"
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                async with client.stream("GET", file_url) as response:
+                    if response.status_code >= 400:
+                        raise TelegramClientError(
+                            f"Telegram file request failed: {response.status_code}"
+                        )
+
+                    async for chunk in response.aiter_bytes():
+                        downloaded_bytes += len(chunk)
+
+                        if downloaded_bytes > maximum_bytes:
+                            raise TelegramClientError("Telegram file exceeds size limit")
+
+                        chunks.append(chunk)
+        except httpx.HTTPError as error:
+            raise TelegramClientError(
+                f"Telegram file request failed: {type(error).__name__}"
+            ) from None
+
+        await asyncio.to_thread(destination.write_bytes, b"".join(chunks))
 
     async def send_message(
         self,

@@ -5,10 +5,12 @@ import logging
 import signal
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 from timelapse.configuration import get_settings
 from timelapse.database import close_database, session_scope
 from timelapse.logging import configure_logging
+from timelapse.services.camera_commands import expire_camera_commands_once
 from timelapse.services.export_worker import process_due_export_jobs_once
 from timelapse.services.health import evaluate_all_cameras_once
 from timelapse.services.heartbeat_aggregation import aggregate_due_heartbeats_once
@@ -26,6 +28,7 @@ from timelapse.services.telegram_client import TelegramClient
 from timelapse.services.telegram_recipients import load_telegram_recipient_chat_ids
 from timelapse.services.timelapse_video_requests import create_due_video_jobs_once
 from timelapse.services.timelapse_video_worker import process_due_video_jobs_once
+from timelapse.services.voice_note_commands import prepare_voice_note_commands_once
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +60,46 @@ async def worker_loop(
             await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
         except TimeoutError:
             continue
+
+
+async def run_voice_note_preparation_once() -> int:
+    settings = get_settings()
+
+    if not settings.voice_playback_enabled or settings.telegram_bot_token is None:
+        return 0
+
+    client = TelegramClient(
+        bot_token=settings.telegram_bot_token.get_secret_value(),
+        timeout_seconds=120,
+    )
+
+    async def download_voice(file_id: str, destination: Path) -> None:
+        await client.download_file(
+            file_id=file_id,
+            destination=destination,
+            maximum_bytes=settings.voice_playback_max_file_bytes,
+        )
+
+    async def notify_failure(chat_id: int, text: str) -> None:
+        await client.send_message(chat_id=chat_id, text=text)
+
+    async with session_scope() as session:
+        return await prepare_voice_note_commands_once(
+            session=session,
+            media_directory=settings.audio_commands_directory,
+            download_voice=download_voice,
+            notify_failure=notify_failure,
+            maximum_file_bytes=settings.voice_playback_max_file_bytes,
+            now=datetime.now(UTC),
+        )
+
+
+async def run_camera_command_expiry_once() -> int:
+    async with session_scope() as session:
+        return await expire_camera_commands_once(
+            session=session,
+            now=datetime.now(UTC),
+        )
 
 
 async def run_health_evaluation_once() -> int:
@@ -223,6 +266,24 @@ async def run_worker() -> None:
     LOGGER.info("process_started service=worker")
 
     tasks = [
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.camera_command_worker_interval_seconds,
+                operation=run_voice_note_preparation_once,
+                operation_name="voice_note_preparation",
+            ),
+            name="voice-note-preparation-loop",
+        ),
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.camera_command_worker_interval_seconds,
+                operation=run_camera_command_expiry_once,
+                operation_name="camera_command_expiry",
+            ),
+            name="camera-command-expiry-loop",
+        ),
         asyncio.create_task(
             worker_loop(
                 stop_event=stop_event,

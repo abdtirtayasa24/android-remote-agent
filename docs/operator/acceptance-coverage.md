@@ -18,7 +18,8 @@ This document maps Must Have MVP behavior to Automated or Manual acceptance chec
 | Motion alerts | First image for a grouped event is sent only once | Automated | `server/tests/integration/test_motion_worker.py` |
 | Telegram webhook | Invalid webhook secrets are rejected; valid updates are queued; registration failure fails API startup | Automated | `server/tests/unit/test_telegram_webhook.py`, `server/tests/unit/test_telegram_application.py` |
 | Telegram auth | Unauthorized users receive no camera details | Automated | `server/tests/unit/test_telegram_authorization.py`, `server/tests/integration/test_telegram_commands.py` |
-| Telegram commands | `/help`, `/status`, `/latest` are authorized and safe | Automated | `server/tests/integration/test_telegram_commands.py` |
+| Telegram commands | `/help`, `/status`, `/latest`, and `/speakcamera` are authorized and safe | Automated | `server/tests/integration/test_telegram_commands.py` |
+| Voice playback | Voice limits/worker preparation, camera-scoped APIs, checksum verification, playback reporting, expiry, and cleanup | Automated; real Android playback pending | `server/tests/integration/test_voice_note_commands.py`, `server/tests/integration/test_camera_commands.py`, `camera-agent/tests/test_commands.py` |
 | Telegram timezone | User-facing Telegram times are Asia/Jakarta | Automated | `server/tests/unit/test_telegram_messages.py`, `server/tests/integration/test_telegram_commands.py` |
 | Export request | `/images` accepts Asia/Jakarta input and snapshots UTC ranges | Automated | `server/tests/unit/test_export_date_parser.py`, `server/tests/integration/test_export_snapshot.py` |
 | Export worker | ZIP manifest, part splitting, resume, and deletion are safe | Automated | `server/tests/unit/test_export_zip.py`, `server/tests/integration/test_export_worker.py` |

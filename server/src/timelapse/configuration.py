@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     daily_timelapse_send_hour_jakarta: int = Field(default=0, ge=0, le=23)
     daily_timelapse_send_minute_jakarta: int = Field(default=10, ge=0, le=59)
     daily_timelapse_frame_rate: int = Field(default=24, ge=1, le=60)
+    voice_playback_enabled: bool = True
+    voice_playback_max_duration_seconds: int = Field(default=60, ge=1, le=300)
+    voice_playback_max_file_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        ge=1024,
+        le=20 * 1024 * 1024,
+    )
+    voice_playback_command_ttl_seconds: int = Field(default=120, ge=30, le=3600)
+    camera_command_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
     retention_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     reconciliation_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
 
@@ -127,6 +136,10 @@ class Settings(BaseSettings):
     @property
     def timelapses_directory(self) -> Path:
         return self.storage_root / "timelapses"
+
+    @property
+    def audio_commands_directory(self) -> Path:
+        return self.storage_root / "audio-commands"
 
     @property
     def quarantine_directory(self) -> Path:

@@ -3,6 +3,7 @@ from timelapse.models import Base
 EXPECTED_TABLES = {
     "alert_states",
     "audit_events",
+    "camera_commands",
     "camera_credentials",
     "camera_heartbeats",
     "cameras",
@@ -31,6 +32,7 @@ def test_required_partial_indexes_are_registered() -> None:
     }
 
     assert {
+        "idx_camera_commands_pending",
         "idx_camera_credentials_active",
         "idx_images_camera_capture_time",
         "idx_images_retention",

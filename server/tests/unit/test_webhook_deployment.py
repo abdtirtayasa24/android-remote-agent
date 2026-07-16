@@ -35,6 +35,16 @@ def test_nginx_proxies_only_post_requests_to_telegram_webhook() -> None:
     assert "proxy_pass http://127.0.0.1:${API_PORT};" in nginx
 
 
+def test_nginx_proxies_camera_command_endpoints_with_narrow_methods() -> None:
+    nginx = read("infrastructure/nginx/timelapse-camera.conf.template")
+
+    assert "/commands/next$" in nginx
+    assert "/commands/[0-9a-f-]+/media$" in nginx
+    assert "/commands/[0-9a-f-]+/result$" in nginx
+    assert nginx.count("limit_except GET") >= 4
+    assert nginx.count("limit_except POST") >= 3
+
+
 def test_environment_template_requires_webhook_secret() -> None:
     environment = read("infrastructure/environment.example")
 

@@ -46,6 +46,38 @@ def reset_test_schema(connection: Connection) -> None:
     """
     Base.metadata.create_all(connection)
 
+    # create_all() creates missing tables but cannot add columns to an existing
+    # dedicated test schema. Production uses Alembic; this keeps the reusable
+    # integration schema aligned before truncation.
+    connection.execute(
+        text(
+            """
+            ALTER TABLE telegram_principals
+            ADD COLUMN IF NOT EXISTS voice_playback_camera_id UUID
+            REFERENCES cameras(id) ON DELETE SET NULL
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            ALTER TYPE camera_command_status
+            ADD VALUE IF NOT EXISTS 'preparing' BEFORE 'pending'
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            ALTER TABLE camera_commands
+            ALTER COLUMN media_storage_path DROP NOT NULL,
+            ALTER COLUMN media_mime_type DROP NOT NULL,
+            ALTER COLUMN media_size_bytes DROP NOT NULL,
+            ALTER COLUMN media_sha256 DROP NOT NULL
+            """
+        )
+    )
+
     identifier_preparer = connection.dialect.identifier_preparer
 
     table_names = [

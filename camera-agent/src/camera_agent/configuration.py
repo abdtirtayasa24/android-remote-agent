@@ -35,6 +35,9 @@ class AgentConfig:
     queue_max_bytes: int
     queue_max_age_hours: int
     allow_insecure_http: bool
+    command_poll_seconds: float = 3
+    playback_timeout_seconds: int = 300
+    voice_playback_enabled: bool = True
 
     @property
     def queue_database_path(self) -> Path:
@@ -67,6 +70,10 @@ class AgentConfig:
     @property
     def heartbeat_url(self) -> str:
         return f"{self.api_base_url}/api/v1/cameras/{self.camera_slug}/heartbeats"
+
+    @property
+    def commands_url(self) -> str:
+        return f"{self.api_base_url}/api/v1/cameras/{self.camera_slug}/commands"
 
     def prepare_directories(self) -> None:
         for directory in (
@@ -161,6 +168,9 @@ def load_config(path: Path) -> AgentConfig:
                     False,
                 )
             ),
+            command_poll_seconds=float(raw.get("command_poll_seconds", 3)),
+            playback_timeout_seconds=int(raw.get("playback_timeout_seconds", 300)),
+            voice_playback_enabled=bool(raw.get("voice_playback_enabled", True)),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise ConfigurationError(f"Invalid configuration value: {exc}") from exc
@@ -239,3 +249,9 @@ def _validate_config(config: AgentConfig) -> None:
 
     if config.queue_max_age_hours <= 0:
         raise ConfigurationError("queue_max_age_hours must be positive")
+
+    if config.command_poll_seconds <= 0:
+        raise ConfigurationError("command_poll_seconds must be positive")
+
+    if config.playback_timeout_seconds <= 0:
+        raise ConfigurationError("playback_timeout_seconds must be positive")

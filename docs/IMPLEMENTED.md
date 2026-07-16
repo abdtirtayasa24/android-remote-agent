@@ -42,6 +42,10 @@ Implemented under `camera-agent/src/camera_agent`:
 - HTTP upload loop with retry/backoff.
 - Heartbeat loop with queue, battery, storage, and capture/upload metrics.
 - Validation command for capture evidence.
+- Authenticated camera-command polling alongside capture/upload/heartbeat loops.
+- Bounded MP3 download with size and SHA-256 verification.
+- `termux-media-player play <file>` invocation without shell interpolation.
+- Playback result reporting and immediate Android temporary-audio cleanup.
 
 Tests cover:
 
@@ -170,13 +174,31 @@ Implemented:
 - `/help` command.
 - `/status [camera]` command.
 - `/latest [camera]` command.
+- `/speakcamera [camera]` command for selecting voice playback target.
+- Authorized voice-note ingestion with duration/file-size validation and durable worker handoff.
 - `/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera]` command.
 - `/exports` command.
 - `/cancel <job-id>` command for administrators.
 - Telegram user-facing timestamps formatted in Asia/Jakarta.
 - Telegram `/images` input interpreted as Asia/Jakarta and converted to UTC before querying.
 
-Tests cover authorization, admin bootstrap, command access, status/latest behavior, storage-path redaction, export command behavior, cancellation rules, and Jakarta timestamp formatting.
+Tests cover authorization, admin bootstrap, command access, status/latest behavior, voice target selection and preparation, storage-path redaction, export command behavior, cancellation rules, and Jakarta timestamp formatting.
+
+## Telegram Voice Playback and Camera Commands
+
+Implemented:
+
+- Durable `camera_commands` state and per-principal selected playback camera.
+- Short webhook work: voice updates validate and queue `preparing` commands only.
+- Worker-side bounded Telegram download and ffmpeg MP3 normalization.
+- Stale-aware preparation leases and stable failed/expired outcomes.
+- Camera-scoped authenticated claim, private media download, and result APIs.
+- Size/checksum metadata verification by the Android agent.
+- Immediate server audio deletion on completion, failure, or expiry.
+- Independent expiry sweep for cameras that remain offline.
+- Safe user notification when voice preparation fails.
+
+Tests cover schema/migration behavior, target selection, limits, worker preparation/failure, API ownership/state transitions, expiry cleanup, Android verification/playback/reporting, and temporary-file cleanup.
 
 ## Exports
 

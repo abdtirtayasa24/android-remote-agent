@@ -17,6 +17,7 @@ from camera_agent.capture import (
     capture_validation_image,
 )
 from camera_agent.cleanup import cleanup_loop
+from camera_agent.commands import command_loop
 from camera_agent.configuration import (
     AgentConfig,
     ConfigurationError,
@@ -176,6 +177,13 @@ async def run_agent(
                 stop_event=stop_event,
             ),
             name="cleanup-loop",
+        ),
+        asyncio.create_task(
+            command_loop(
+                config=config,
+                stop_event=stop_event,
+            ),
+            name="command-loop",
         ),
         asyncio.create_task(
             heartbeat_loop(

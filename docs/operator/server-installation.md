@@ -60,6 +60,10 @@ DAILY_TIMELAPSE_ENABLED=true
 DAILY_TIMELAPSE_SEND_HOUR_JAKARTA=0
 DAILY_TIMELAPSE_SEND_MINUTE_JAKARTA=10
 DAILY_TIMELAPSE_FRAME_RATE=24
+VOICE_PLAYBACK_ENABLED=true
+VOICE_PLAYBACK_MAX_DURATION_SECONDS=60
+VOICE_PLAYBACK_MAX_FILE_BYTES=5242880
+VOICE_PLAYBACK_COMMAND_TTL_SECONDS=120
 ```
 
 `TELEGRAM_ADMIN_USER_ID` bootstraps the first administrator. Do not configure or require `TELEGRAM_ADMIN_CHAT_ID`. `TELEGRAM_WEBHOOK_SECRET` is required when the bot token is configured and must contain 1–256 letters, digits, underscores, or hyphens.
@@ -135,7 +139,10 @@ Set:
   "api_base_url": "https://camera.example.com",
   "camera_slug": "front-door",
   "camera_credential": "cam_...",
-  "camera_id": 0
+  "camera_id": 0,
+  "voice_playback_enabled": true,
+  "command_poll_seconds": 3,
+  "playback_timeout_seconds": 300
 }
 ```
 
@@ -152,6 +159,7 @@ Start a chat with the bot from the Telegram account whose user ID equals `TELEGR
 ```text
 /help
 /status
+/speakcamera front-door
 ```
 
 Telegram command timestamps are displayed as Asia/Jakarta time. The `/images` command accepts Asia/Jakarta timestamps and the backend stores/query ranges as UTC.

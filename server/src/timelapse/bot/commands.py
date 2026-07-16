@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from timelapse.bot.authorization import AuthorizedTelegramUser
 from timelapse.bot.date_parser import ExportDateParseError, parse_images_command_args
 from timelapse.configuration import get_settings
+from timelapse.models.entities import Camera, TelegramPrincipal
 from timelapse.services.camera_status import (
     format_camera_status,
     load_camera_status,
@@ -56,6 +58,7 @@ HELP_TEXT = "\n".join(
         "/help - Show this help message",
         "/status [camera] - Show camera health summary",
         "/latest [camera] - Send latest stored image",
+        "/speakcamera [camera] - Show or set the voice playback camera",
         "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera] - Request ZIP export (Asia/Jakarta)",
         "/exports - List your recent export jobs",
         "/cancel <job-id> - Cancel a pending export (administrator only)",
@@ -104,6 +107,62 @@ async def handle_latest_command(
         caption=caption,
     )
     return "Latest image sent."
+
+
+async def handle_speakcamera_command(
+    *,
+    session: AsyncSession,
+    args: list[str],
+    user: AuthorizedTelegramUser,
+) -> str:
+    if len(args) > 1:
+        return "Usage: /speakcamera [camera]"
+
+    cameras = (
+        await session.scalars(
+            select(Camera).where(Camera.enabled.is_(True)).order_by(Camera.slug)
+        )
+    ).all()
+
+    if not cameras:
+        return "No enabled cameras found."
+
+    principal = await session.scalar(
+        select(TelegramPrincipal)
+        .where(TelegramPrincipal.telegram_user_id == user.telegram_user_id)
+        .where(TelegramPrincipal.telegram_chat_id == user.telegram_chat_id)
+        .limit(1)
+    )
+
+    if principal is None:
+        return "Unauthorized."
+
+    if args:
+        selected = next((camera for camera in cameras if camera.slug == args[0]), None)
+
+        if selected is None:
+            return "Voice playback camera not found."
+
+        principal.voice_playback_camera_id = selected.id
+        return f"Voice playback camera set to {selected.display_name} ({selected.slug})."
+
+    selected = next(
+        (camera for camera in cameras if camera.id == principal.voice_playback_camera_id),
+        None,
+    )
+    current = (
+        f"{selected.display_name} ({selected.slug})"
+        if selected is not None
+        else "not configured"
+    )
+    available = ", ".join(camera.slug for camera in cameras)
+    return "\n".join(
+        (
+            f"Current voice playback camera: {current}.",
+            f"Available cameras: {available}.",
+            "Set with /speakcamera <camera>.",
+        )
+    )
 
 
 async def handle_images_command(

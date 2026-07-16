@@ -13,11 +13,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from timelapse.models.base import Base
 from timelapse.models.enums import (
     ANALYSIS_STATUS_DB,
+    CAMERA_COMMAND_STATUS_DB,
+    CAMERA_COMMAND_TYPE_DB,
     CAMERA_HEALTH_STATE_DB,
     CAPTURE_SOURCE_DB,
     IMAGE_STORAGE_STATE_DB,
     JOB_STATUS_DB,
     AnalysisStatus,
+    CameraCommandStatus,
+    CameraCommandType,
     CameraHealthState,
     CaptureSource,
     ImageStorageState,
@@ -478,6 +482,61 @@ class TelegramPrincipal(Base):
         nullable=False,
         server_default=sa.true(),
     )
+    voice_playback_camera_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("cameras.id", ondelete="SET NULL"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+
+
+class CameraCommand(Base):
+    __tablename__ = "camera_commands"
+
+    id: Mapped[UUID] = uuid_primary_key()
+    camera_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("cameras.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    command_type: Mapped[CameraCommandType] = mapped_column(
+        CAMERA_COMMAND_TYPE_DB,
+        nullable=False,
+    )
+    status: Mapped[CameraCommandStatus] = mapped_column(
+        CAMERA_COMMAND_STATUS_DB,
+        nullable=False,
+        server_default=CameraCommandStatus.PENDING.value,
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=sa.text("'{}'::jsonb"),
+    )
+    media_storage_path: Mapped[str | None] = mapped_column(sa.Text)
+    media_mime_type: Mapped[str | None] = mapped_column(sa.Text)
+    media_size_bytes: Mapped[int | None] = mapped_column(sa.BigInteger)
+    media_sha256: Mapped[str | None] = mapped_column(sa.CHAR(64))
+    requested_by_telegram_user_id: Mapped[int] = mapped_column(
+        sa.BigInteger,
+        nullable=False,
+    )
+    requested_in_telegram_chat_id: Mapped[int] = mapped_column(
+        sa.BigInteger,
+        nullable=False,
+    )
+    telegram_message_id: Mapped[int | None] = mapped_column(sa.BigInteger)
+    claimed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+    )
+    error_code: Mapped[str | None] = mapped_column(sa.Text)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True),
         nullable=False,
@@ -733,6 +792,14 @@ class AuditEvent(Base):
         server_default=sa.text("'{}'::jsonb"),
     )
 
+
+sa.Index(
+    "idx_camera_commands_pending",
+    CameraCommand.camera_id,
+    CameraCommand.status,
+    CameraCommand.created_at,
+    postgresql_where=sa.text("status IN ('pending', 'claimed', 'started')"),
+)
 
 sa.Index(
     "idx_camera_credentials_active",

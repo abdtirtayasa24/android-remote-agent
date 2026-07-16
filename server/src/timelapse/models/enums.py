@@ -37,6 +37,20 @@ class JobStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class CameraCommandStatus(StrEnum):
+    PREPARING = "preparing"
+    PENDING = "pending"
+    CLAIMED = "claimed"
+    STARTED = "started"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
+
+
+class CameraCommandType(StrEnum):
+    PLAY_AUDIO = "play_audio"
+
+
 class AnalysisStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -70,6 +84,18 @@ IMAGE_STORAGE_STATE_DB = sa.Enum(
 JOB_STATUS_DB = sa.Enum(
     JobStatus,
     name="job_status",
+    values_callable=enum_values,
+)
+
+CAMERA_COMMAND_STATUS_DB = sa.Enum(
+    CameraCommandStatus,
+    name="camera_command_status",
+    values_callable=enum_values,
+)
+
+CAMERA_COMMAND_TYPE_DB = sa.Enum(
+    CameraCommandType,
+    name="camera_command_type",
     values_callable=enum_values,
 )
 

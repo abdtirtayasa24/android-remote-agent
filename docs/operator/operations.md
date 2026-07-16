@@ -33,6 +33,7 @@ Telegram:
 /help
 /status
 /latest front-door
+/speakcamera front-door
 ```
 
 Telegram user-facing timestamps are shown in Asia/Jakarta. User commands that include timestamps, such as `/images`, are entered in Asia/Jakarta and converted to UTC by the backend.
@@ -80,6 +81,17 @@ find /srv/timelapse/timelapses -type f -ls
 
 A file may remain while Telegram delivery is retrying. Completed jobs are cleaned without resending after restart. Severe or hard storage pressure defers new generation and removes retained retry MP4s so daily videos cannot bypass disk protection.
 
+## Voice-note playback
+
+Select an enabled camera with `/speakcamera <camera-slug>`, then send the bot a Telegram voice note. The API only queues metadata; `timelapse-worker.service` downloads and normalizes the audio, and the Android agent claims it over the camera-authenticated command API.
+
+Voice notes default to a 60-second/5 MiB limit, and unstarted commands expire after two minutes. A started command receives enough grace to finish playback. Server and Android audio files are deleted after completion, failure, or expiry. Inspect failures without exposing file IDs or credentials:
+
+```sh
+journalctl -u timelapse-worker.service -n 200 --no-pager | grep -E 'voice|camera_command'
+find /srv/timelapse/audio-commands -type f -ls
+```
+
 ## Retention and reconciliation
 
 The worker runs retention and reconciliation loops:
@@ -102,6 +114,7 @@ df -h /srv/timelapse
 find /srv/timelapse/images -type f | wc -l
 find /srv/timelapse/exports -type f | wc -l
 find /srv/timelapse/timelapses -type f | wc -l
+find /srv/timelapse/audio-commands -type f | wc -l
 find /srv/timelapse/quarantine -type f | wc -l
 ```
 

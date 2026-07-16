@@ -16,6 +16,7 @@ MIGRATION_PATHS = (
     MIGRATION_DIRECTORY / "20260714_0001_initial_schema.py",
     MIGRATION_DIRECTORY / "20260716_0002_health_alerts.py",
     MIGRATION_DIRECTORY / "20260717_0003_timelapse_video_jobs.py",
+    MIGRATION_DIRECTORY / "20260718_0004_camera_commands.py",
 )
 
 
@@ -41,6 +42,7 @@ def run_migration_chain(connection: Connection, schema_name: str) -> None:
         assert "timelapse_video_jobs" in tables
         assert "timelapse_video_deliveries" in tables
         assert "timelapse_video_job_images" in tables
+        assert "camera_commands" in tables
 
         for migration in reversed(migrations):
             migration.downgrade()

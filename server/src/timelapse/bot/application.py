@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from timelapse.bot.authorization import (
     GENERIC_DENIAL_MESSAGE,
@@ -19,12 +26,25 @@ from timelapse.bot.commands import (
     handle_help_command,
     handle_images_command,
     handle_latest_command,
+    handle_speakcamera_command,
     handle_status_command,
 )
 from timelapse.configuration import get_settings
 from timelapse.database import session_scope
+from timelapse.services.voice_note_commands import (
+    VoiceNoteCommandError,
+    VoiceNoteRequest,
+    queue_voice_note_command,
+)
 
 LOGGER = logging.getLogger(__name__)
+
+VOICE_NOTE_ERROR_MESSAGES = {
+    "voice_camera_not_configured": "Configure a camera first with /speakcamera <camera>.",
+    "voice_camera_not_available": "The configured camera is unavailable.",
+    "voice_duration_exceeded": "Voice note is too long.",
+    "voice_file_too_large": "Voice note file is too large.",
+}
 
 
 @dataclass(frozen=True)
@@ -135,6 +155,67 @@ async def _latest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.effective_chat.send_message(text)
 
 
+async def _speakcamera(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = await _authorize_update(update)
+
+    if user is None:
+        await _reply_unauthorized(update)
+        return
+
+    async with session_scope() as session:
+        text = await handle_speakcamera_command(
+            session=session,
+            args=list(context.args),
+            user=user,
+        )
+
+    if update.effective_chat is not None:
+        await update.effective_chat.send_message(text)
+
+
+async def _voice_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = await _authorize_update(update)
+
+    if user is None:
+        await _reply_unauthorized(update)
+        return
+
+    message = update.effective_message
+    voice = message.voice if message is not None else None
+
+    if message is None or voice is None:
+        return
+
+    settings = get_settings()
+
+    if not settings.voice_playback_enabled:
+        await message.reply_text("Voice playback is disabled.")
+        return
+
+    try:
+        async with session_scope() as session:
+            command = await queue_voice_note_command(
+                session=session,
+                user=user,
+                request=VoiceNoteRequest(
+                    file_id=voice.file_id,
+                    duration_seconds=voice.duration,
+                    file_size_bytes=voice.file_size,
+                    telegram_message_id=message.message_id,
+                ),
+                maximum_duration_seconds=(settings.voice_playback_max_duration_seconds),
+                maximum_file_bytes=settings.voice_playback_max_file_bytes,
+                command_ttl=timedelta(seconds=settings.voice_playback_command_ttl_seconds),
+            )
+    except VoiceNoteCommandError as error:
+        await message.reply_text(
+            VOICE_NOTE_ERROR_MESSAGES.get(error.code, "Voice note could not be queued.")
+        )
+        return
+
+    await message.reply_text(f"Voice note queued: {command.id}.")
+
+
 async def _images(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = await _authorize_update(update)
 
@@ -197,9 +278,11 @@ def build_application(*, bot_token: str | None = None) -> Application:
     application.add_handler(CommandHandler("help", _help))
     application.add_handler(CommandHandler("status", _status))
     application.add_handler(CommandHandler("latest", _latest))
+    application.add_handler(CommandHandler("speakcamera", _speakcamera))
     application.add_handler(CommandHandler("images", _images))
     application.add_handler(CommandHandler("exports", _exports))
     application.add_handler(CommandHandler("cancel", _cancel))
+    application.add_handler(MessageHandler(filters.VOICE, _voice_note))
     return application
 
 

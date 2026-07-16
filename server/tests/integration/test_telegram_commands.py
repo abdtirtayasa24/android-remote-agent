@@ -16,6 +16,7 @@ from timelapse.bot.authorization import (
 from timelapse.bot.commands import (
     handle_help_command,
     handle_latest_command,
+    handle_speakcamera_command,
     handle_status_command,
 )
 from timelapse.database import get_session_factory, session_scope
@@ -107,9 +108,75 @@ async def test_help_lists_supported_authorized_commands() -> None:
 
     assert "/status" in text
     assert "/latest" in text
+    assert "/speakcamera" in text
     assert "/images" in text
     assert "/exports" in text
     assert "/cancel" in text
+
+
+async def test_speakcamera_sets_and_reports_voice_playback_camera(
+    create_camera,
+) -> None:
+    front_door = await create_camera(slug="front-door")
+    await create_camera(slug="garage")
+
+    async with session_scope() as session:
+        user = await authorize_telegram_user(
+            session=session,
+            request=TelegramAuthorizationRequest(
+                telegram_user_id=999,
+                telegram_chat_id=222,
+                display_name="Admin",
+            ),
+            admin_user_id=999,
+        )
+
+    async with session_scope() as session:
+        configured = await handle_speakcamera_command(
+            session=session,
+            args=[front_door.slug],
+            user=user,
+        )
+
+    async with session_scope() as session:
+        status = await handle_speakcamera_command(
+            session=session,
+            args=[],
+            user=user,
+        )
+        principal = await session.scalar(
+            select(TelegramPrincipal).where(TelegramPrincipal.telegram_user_id == 999)
+        )
+        camera = await session.get(Camera, principal.voice_playback_camera_id)
+
+    assert configured == "Voice playback camera set to Front Door (front-door)."
+    assert "Current voice playback camera: Front Door (front-door)." in status
+    assert "Available cameras: front-door, garage." in status
+    assert camera.slug == "front-door"
+
+
+async def test_speakcamera_rejects_unknown_camera(create_camera) -> None:
+    await create_camera(slug="front-door")
+
+    async with session_scope() as session:
+        user = await authorize_telegram_user(
+            session=session,
+            request=TelegramAuthorizationRequest(
+                telegram_user_id=999,
+                telegram_chat_id=222,
+                display_name="Admin",
+            ),
+            admin_user_id=999,
+        )
+
+    async with session_scope() as session:
+        text = await handle_speakcamera_command(
+            session=session,
+            args=["missing-camera"],
+            user=user,
+        )
+
+    assert text == "Voice playback camera not found."
 
 
 async def test_status_returns_camera_health_without_storage_paths(create_camera) -> None:

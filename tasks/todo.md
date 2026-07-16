@@ -293,13 +293,13 @@
 **Description:** Add durable camera commands and store each Telegram principal's selected voice playback camera.
 
 **Acceptance criteria:**
-- [ ] `camera_commands` table exists.
-- [ ] `telegram_principals.voice_playback_camera_id` exists.
-- [ ] Pending command index supports camera polling.
-- [ ] Schema tests are updated.
+- [x] `camera_commands` table exists.
+- [x] `telegram_principals.voice_playback_camera_id` exists.
+- [x] Pending command index supports camera polling.
+- [x] Schema tests are updated.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit/test_schema_metadata.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_schema_metadata.py -q`
 
 **Dependencies:** None
 
@@ -318,13 +318,13 @@
 **Description:** Let authorized Telegram users view or set the camera used for voice-note playback.
 
 **Acceptance criteria:**
-- [ ] `/speakcamera` shows current target and available enabled cameras.
-- [ ] `/speakcamera <camera>` validates and saves target camera.
-- [ ] Unauthorized users get generic denial.
-- [ ] Help text includes the new command.
+- [x] `/speakcamera` shows current target and available enabled cameras.
+- [x] `/speakcamera <camera>` validates and saves target camera.
+- [x] Unauthorized users get generic denial.
+- [x] Help text includes the new command.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_telegram_commands.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/integration/test_telegram_commands.py -q`
 
 **Dependencies:** Task 12, Task 3 or Task 4 depending on implementation order
 
@@ -340,20 +340,20 @@
 
 ## Task 14: Add Telegram voice-note handler
 
-**Description:** Handle authorized Telegram voice notes by downloading/normalizing audio and creating a `play_audio` camera command for the user's configured camera.
+**Description:** Handle authorized Telegram voice notes by queuing durable preparation work; the worker downloads/normalizes audio and creates a playable command for the user's configured camera.
 
 **Acceptance criteria:**
-- [ ] Voice notes require configured target camera.
-- [ ] Duration and file size limits are enforced.
-- [ ] Telegram file download errors produce safe user-facing messages.
-- [ ] Audio is normalized with `ffmpeg` to a format playable by `termux-media-player`.
-- [ ] Command is queued with expiry and audit metadata.
-- [ ] Generated audio artifacts are deleted after command success or failure, retaining only metadata.
-- [ ] No raw Telegram file URLs or tokens are logged.
+- [x] Voice notes require configured target camera.
+- [x] Duration and file size limits are enforced.
+- [x] Telegram file download errors produce safe user-facing messages.
+- [x] Audio is normalized with `ffmpeg` to a format playable by `termux-media-player`.
+- [x] Command is queued with expiry and audit metadata.
+- [x] Generated audio artifacts are deleted after command success or failure, retaining only metadata.
+- [x] No raw Telegram file URLs or tokens are logged.
 
 **Verification:**
-- [ ] Unit tests for limit/target-camera decisions.
-- [ ] Integration tests for command creation.
+- [x] Focused tests for limit/target-camera decisions.
+- [x] Integration tests for command creation.
 
 **Dependencies:** Task 13
 
@@ -374,14 +374,14 @@
 **Description:** Add authenticated camera APIs for Android agents to fetch commands, download media, and report command results.
 
 **Acceptance criteria:**
-- [ ] Camera credentials authorize only matching camera commands.
-- [ ] Expired commands are not delivered.
-- [ ] Media download verifies command ownership and status.
-- [ ] Result endpoint accepts stable command states/error codes.
-- [ ] Filesystem paths are never exposed.
+- [x] Camera credentials authorize only matching camera commands.
+- [x] Expired commands are not delivered.
+- [x] Media download verifies command ownership and status.
+- [x] Result endpoint accepts stable command states/error codes.
+- [x] Filesystem paths are never exposed.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_camera_commands.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/integration/test_camera_commands.py -q`
 
 **Dependencies:** Task 12
 
@@ -401,15 +401,15 @@
 **Description:** Extend the Android agent with a command loop that polls for `play_audio`, downloads media, verifies it, plays it, reports result, and cleans temporary files.
 
 **Acceptance criteria:**
-- [ ] Command loop runs alongside capture/upload/heartbeat without blocking captures.
-- [ ] Downloaded audio SHA-256 and size are verified.
-- [ ] Playback uses `termux-media-player play <downloaded-audio-file>` with subprocess arguments, not shell interpolation.
-- [ ] Playback success/failure is reported.
-- [ ] Temp audio files are removed immediately after success or failure.
-- [ ] Credentials and media paths are not logged.
+- [x] Command loop runs alongside capture/upload/heartbeat without blocking captures.
+- [x] Downloaded audio SHA-256 and size are verified.
+- [x] Playback uses `termux-media-player play <downloaded-audio-file>` with subprocess arguments, not shell interpolation.
+- [x] Playback success/failure is reported.
+- [x] Temp audio files are removed immediately after success or failure.
+- [x] Credentials and media paths are not logged.
 
 **Verification:**
-- [ ] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
+- [x] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
 
 **Dependencies:** Task 15
 

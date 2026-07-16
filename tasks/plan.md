@@ -467,7 +467,7 @@ CAMERA_COMMAND_POLL_SECONDS=3
 
 - Task 12: Add camera command schema and voice playback camera preference.
 - Task 13: Add `/speakcamera [camera]` command.
-- Task 14: Add Telegram voice-note handler that creates audio playback commands.
+- Task 14: Add a Telegram voice-note handler that queues worker-side audio preparation.
 - Task 15: Add authenticated camera command polling/media/result APIs.
 - Task 16: Add Android agent command polling and playback loop.
 

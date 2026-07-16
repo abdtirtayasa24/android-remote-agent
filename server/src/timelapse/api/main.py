@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from timelapse.api.commands import router as commands_router
 from timelapse.api.heartbeats import router as heartbeats_router
 from timelapse.api.images import router as images_router
 from timelapse.api.telegram import router as telegram_router
@@ -71,6 +72,7 @@ app = FastAPI(
 
 app.include_router(images_router)
 app.include_router(heartbeats_router)
+app.include_router(commands_router)
 app.include_router(telegram_router)
 
 

@@ -19,6 +19,7 @@ The project is an Android still-image time-lapse security camera system. An Andr
 - Group motion detections into five-minute events and send only the first image alert.
 - Allow authorized Telegram users to inspect status, retrieve latest images, and request ZIP exports.
 - Generate one MP4 per enabled camera for the previous Asia/Jakarta day, send it automatically through Telegram, and delete the generated file after delivery.
+- Queue authorized Telegram voice notes for verified playback on a selected Android camera.
 - Interpret Telegram date/time input in Asia/Jakarta; store and process backend timestamps as UTC.
 - Retain images for seven days by default and protect active exports from retention deletion.
 - Detect and repair or quarantine database/filesystem mismatches.
@@ -127,7 +128,7 @@ The system uses a store-and-forward architecture. The Android phone is responsib
 
 ### Android camera agent
 
-One long-running Python process runs cooperative loops for capture, upload, cleanup, and heartbeat reporting.
+One long-running Python process runs cooperative loops for capture, upload, cleanup, heartbeat reporting, and camera command polling.
 
 ```mermaid
 flowchart LR
@@ -172,6 +173,7 @@ The API has intentionally narrow responsibilities:
 - authenticate camera credentials;
 - accept image uploads;
 - accept heartbeats;
+- expose authenticated camera command claim, media, and result endpoints;
 - receive authenticated Telegram webhook updates and dispatch command handlers;
 - expose liveness.
 
@@ -187,6 +189,8 @@ One worker process is enough for MVP scale. It runs independent loops for:
 - pending motion alert retry;
 - export ZIP creation and Telegram delivery;
 - daily time-lapse job creation, MP4 generation, Telegram delivery, and immediate MP4 cleanup;
+- Telegram voice-file download and ffmpeg normalization outside webhook handlers;
+- camera command expiry and immediate audio cleanup;
 - retention and emergency cleanup;
 - filesystem reconciliation.
 
@@ -270,7 +274,8 @@ PostgreSQL stores:
 - `motion_events` and `motion_event_images`: five-minute event grouping and representative alert image.
 - `camera_heartbeats`: detailed heartbeat history.
 - `heartbeat_daily_summaries`: daily aggregation before detailed heartbeat expiry.
-- `telegram_principals`: authorized Telegram users/chats and roles.
+- `telegram_principals`: authorized Telegram users/chats, roles, and selected voice playback camera.
+- `camera_commands`: durable voice preparation/playback state, audit metadata, expiry, checksum, and retained outcome metadata.
 - `alert_states`: persistent health-alert deduplication state.
 - `export_jobs`, `export_job_images`, `export_parts`: export snapshot, ZIP part metadata, and delivery state.
 - `timelapse_video_jobs`, `timelapse_video_job_images`, and `timelapse_video_deliveries`: deterministic daily image snapshots, leased generation state, per-recipient delivery state, and retained MP4 metadata.
@@ -394,6 +399,15 @@ flowchart LR
 7. Delivery retries reuse an existing generated MP4. A completed job with interrupted cleanup deletes the file without resending.
 8. Severe/hard storage pressure defers generation and deletes retained retry MP4s; failed/oversized artifacts are deleted while size, checksum, status, and stable error code remain in PostgreSQL.
 
+### Telegram voice playback
+
+1. `/speakcamera [camera]` reads or updates the authorized principal's enabled playback camera.
+2. A voice-note webhook validates duration and declared size, then persists a short-lived `preparing` command; it does not download or transcode in the API request.
+3. The worker downloads the Telegram file with a bounded stream, normalizes it to MP3 with `ffmpeg`, verifies metadata, and transitions the command to `pending`.
+4. The selected Android camera claims the command with its existing camera credential, downloads only its command media, verifies size and SHA-256, and reports `started`.
+5. The agent invokes `termux-media-player play <file>`, reports `completed` or a stable failure code, and always deletes its temporary file.
+6. The server deletes audio immediately after completion, failure, or expiry while retaining command metadata. A worker expiry sweep handles cameras that never poll.
+
 ### Retention, disk protection, and reconciliation
 
 ```mermaid
@@ -449,6 +463,8 @@ flowchart LR
 - Duplicate upload: server returns `already_stored` without duplicating image rows.
 - Worker interruption: database job state supports reclaim/resume behavior.
 - Telegram delivery failure: health/motion/export state is persisted so work can retry or be audited.
+- Voice preparation failure: the command is marked failed, temporary audio is deleted, and a safe Telegram notification is attempted.
+- Camera command expiry: server audio is deleted even when the Android camera is offline.
 - Export interruption: restart resumes at the first truly unsent part; already-sent parts are deleted without resending.
 - Retention/export race: export snapshot and retention use row locking so active or locked images are protected.
 - Database/file mismatch: reconciliation marks missing rows, audits mismatches, quarantines orphans, and removes stale temp/export files.

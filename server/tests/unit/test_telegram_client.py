@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -27,10 +28,22 @@ class RecordingAsyncClient:
 
     async def post(self, url: str, **kwargs: object) -> httpx.Response:
         self.requests.append((url, kwargs))
+        result = (
+            {"file_path": "voice/file.oga"} if url.endswith("/getFile") else {"message_id": 42}
+        )
         return httpx.Response(
             200,
             request=httpx.Request("POST", url),
-            json={"ok": True, "result": {"message_id": 42}},
+            json={"ok": True, "result": result},
+        )
+
+    @asynccontextmanager
+    async def stream(self, method: str, url: str, **kwargs: object):
+        self.requests.append((url, kwargs))
+        yield httpx.Response(
+            200,
+            request=httpx.Request(method, url),
+            content=b"telegram-voice",
         )
 
 
@@ -76,6 +89,23 @@ async def test_telegram_client_sends_mp4_video(
     assert kwargs["data"] == {"chat_id": 123456, "caption": "Daily video"}
     assert kwargs["files"]["video"][0] == "daily.mp4"
     assert kwargs["files"]["video"][2] == "video/mp4"
+
+
+async def test_telegram_client_downloads_file_without_exposing_remote_url(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    RecordingAsyncClient.requests = []
+    monkeypatch.setattr(httpx, "AsyncClient", RecordingAsyncClient)
+    destination = tmp_path / "voice.oga"
+    client = TelegramClient(bot_token="123456:test-token")  # noqa: S106
+
+    await client.download_file(file_id="voice-id", destination=destination)
+
+    assert destination.read_bytes() == b"telegram-voice"
+    assert RecordingAsyncClient.requests[0][0].endswith("/getFile")
+    assert RecordingAsyncClient.requests[0][1]["json"] == {"file_id": "voice-id"}
+    assert RecordingAsyncClient.requests[1][0].endswith("/voice/file.oga")
 
 
 async def test_telegram_client_errors_do_not_expose_bot_token(

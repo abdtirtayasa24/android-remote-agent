@@ -8,8 +8,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from telegram.ext import MessageHandler
 from timelapse.api import main as api_main
 from timelapse.bot.application import (
+    build_application,
     start_webhook_application,
     stop_webhook_application,
 )
@@ -50,6 +52,16 @@ class FakeApplication:
     async def shutdown(self) -> None:
         self.shutdown_called = True
         self.initialized = False
+
+
+def test_telegram_application_registers_voice_note_handler() -> None:
+    application = build_application(bot_token=BOT_TOKEN)
+
+    assert any(
+        isinstance(handler, MessageHandler)
+        for handlers in application.handlers.values()
+        for handler in handlers
+    )
 
 
 async def test_webhook_application_starts_and_registers_webhook() -> None:

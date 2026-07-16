@@ -20,7 +20,7 @@ Install Termux and its add-ons from the same distribution source. Mixing differe
 
 Open each application once after installation.
 
-Grant the camera permission to Termux:API and any notification permission requested by Termux.
+Grant camera and media/audio permissions to Termux:API and any notification permission requested by Termux.
 
 Exclude Termux, Termux:API, and Termux:Boot from Android battery optimization.
 
@@ -123,9 +123,20 @@ Keep the normal values:
   "capture_interval_seconds": 60,
   "maximum_width": 1280,
   "maximum_height": 720,
-  "jpeg_quality": 72
+  "jpeg_quality": 72,
+  "voice_playback_enabled": true,
+  "command_poll_seconds": 3,
+  "playback_timeout_seconds": 300
 }
 ```
+
+Confirm Termux:API media playback before enabling Telegram voice commands:
+
+```sh
+termux-media-player info
+```
+
+In Telegram, use `/speakcamera <camera-slug>` to select this device, then send a voice note. The agent verifies the downloaded MP3 size/checksum, invokes `termux-media-player play`, reports the result, and removes the temporary audio file.
 
 ## Run the ten-capture acceptance test
 

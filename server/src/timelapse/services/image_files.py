@@ -53,6 +53,7 @@ def ensure_storage_layout(settings: Settings) -> None:
         settings.images_directory,
         settings.exports_directory,
         settings.timelapses_directory,
+        settings.audio_commands_directory,
         settings.quarantine_directory,
         settings.temporary_directory,
         settings.temporary_directory / "uploads",
