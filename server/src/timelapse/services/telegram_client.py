@@ -57,6 +57,27 @@ class TelegramClient:
 
         return _message_id(response)
 
+    async def send_document(
+        self,
+        *,
+        chat_id: int,
+        document_path: Path,
+        caption: str | None = None,
+    ) -> int | None:
+        data: dict[str, Any] = {"chat_id": chat_id}
+
+        if caption is not None:
+            data["caption"] = caption
+
+        with document_path.open("rb") as document:
+            response = await self._post(
+                "sendDocument",
+                data=data,
+                files={"document": (document_path.name, document, "application/zip")},
+            )
+
+        return _message_id(response)
+
     async def _post(
         self,
         method: str,

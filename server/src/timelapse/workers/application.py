@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from timelapse.configuration import get_settings
 from timelapse.database import close_database, session_scope
 from timelapse.logging import configure_logging
+from timelapse.services.export_worker import process_due_export_jobs_once
 from timelapse.services.health import evaluate_all_cameras_once
 from timelapse.services.heartbeat_aggregation import aggregate_due_heartbeats_once
 from timelapse.services.motion_worker import process_due_motion_analyses_once
@@ -90,6 +91,24 @@ async def run_motion_analysis_once() -> int:
         )
 
 
+async def run_export_jobs_once() -> int:
+    settings = get_settings()
+    sender = None
+
+    if settings.telegram_bot_token is not None:
+        sender = TelegramClient(
+            bot_token=settings.telegram_bot_token.get_secret_value(),
+        )
+
+    async with session_scope() as session:
+        return await process_due_export_jobs_once(
+            session=session,
+            storage_root=settings.exports_directory,
+            sender=sender,
+            now=datetime.now(UTC),
+        )
+
+
 async def run_worker() -> None:
     settings = get_settings()
     configure_logging("worker", settings.log_level)
@@ -129,6 +148,15 @@ async def run_worker() -> None:
                 operation_name="motion_analysis",
             ),
             name="motion-analysis-loop",
+        ),
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.heartbeat_aggregation_interval_seconds,
+                operation=run_export_jobs_once,
+                operation_name="export_jobs",
+            ),
+            name="export-jobs-loop",
         ),
     ]
 

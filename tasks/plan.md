@@ -80,18 +80,18 @@ Quality gate cleanup
 - [x] Failed analysis never deletes or corrupts the image row
 
 ### Phase 3: Milestone 7 — Telegram Retrieval and Exports
-- [ ] Task 11: Implement Telegram authorization middleware and bot bootstrap
-- [ ] Task 12: Implement `/help`, `/status`, and `/latest`
-- [ ] Task 13: Implement strict `/images` date parser and export snapshot creation
-- [ ] Task 14: Implement export worker ZIP parts and manifest
-- [ ] Task 15: Implement `/exports` and `/cancel`
+- [x] Task 11: Implement Telegram authorization middleware and bot bootstrap
+- [x] Task 12: Implement `/help`, `/status`, and `/latest`
+- [x] Task 13: Implement strict `/images` date parser and export snapshot creation
+- [x] Task 14: Implement export worker ZIP parts and manifest
+- [x] Task 15: Implement `/exports` and `/cancel`
 
 ### Checkpoint: Milestone 7
-- [ ] Unauthorized Telegram users receive no camera details
-- [ ] Asia/Jakarta date parsing handles cross-midnight ranges
-- [ ] Exact 24-hour ranges pass; over-24-hour ranges fail
-- [ ] ZIP manifest exactly matches `export_job_images`
-- [ ] Interrupted export resumes at the first unsent part
+- [x] Unauthorized Telegram users receive no camera details
+- [x] Asia/Jakarta date parsing handles cross-midnight ranges
+- [x] Exact 24-hour ranges pass; over-24-hour ranges fail
+- [x] ZIP manifest exactly matches `export_job_images`
+- [x] Interrupted export resumes at the first unsent part
 
 ### Phase 4: Milestone 8 — Retention and Storage Protection
 - [ ] Task 16: Implement retention eligibility and deletion worker

@@ -241,18 +241,18 @@
 
 ---
 
-## Task 11: Implement Telegram authorization middleware and bot bootstrap
+## Task 11: Implement Telegram authorization middleware and bot bootstrap ✅
 
 **Description:** Replace the bot foundation shell with a python-telegram-bot application that authorizes Telegram user IDs before command handling. Bootstrap the administrator from `TELEGRAM_ADMIN_USER_ID`; do not require `TELEGRAM_ADMIN_CHAT_ID`.
 
 **Acceptance criteria:**
-- [ ] Unauthorized users receive a generic denial.
-- [ ] The `TELEGRAM_ADMIN_USER_ID` user is authorized as administrator without a chat ID env var.
-- [ ] Authorized users can reach command handlers.
-- [ ] No camera details are exposed before authorization.
+- [x] Unauthorized users receive a generic denial.
+- [x] The `TELEGRAM_ADMIN_USER_ID` user is authorized as administrator without a chat ID env var.
+- [x] Authorized users can reach command handlers.
+- [x] No camera details are exposed before authorization.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q -k telegram_auth`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q -k telegram_auth`
 
 **Dependencies:** Task 1
 
@@ -268,17 +268,17 @@
 
 ---
 
-## Task 12: Implement `/help`, `/status`, and `/latest`
+## Task 12: Implement `/help`, `/status`, and `/latest` ✅
 
 **Description:** Add read-only Telegram commands for help text, camera health summary, and latest stored image retrieval.
 
 **Acceptance criteria:**
-- [ ] `/help` lists supported commands for the authorized role.
-- [ ] `/status [camera]` returns health and queue summary without storage paths.
-- [ ] `/latest [camera]` sends the latest stored image for an authorized user.
+- [x] `/help` lists supported commands for the authorized role.
+- [x] `/status [camera]` returns health and queue summary without storage paths.
+- [x] `/latest [camera]` sends the latest stored image for an authorized user.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k telegram_commands` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k telegram_commands` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 11
 
@@ -291,18 +291,18 @@
 
 ---
 
-## Task 13: Implement strict `/images` date parser and export snapshot creation
+## Task 13: Implement strict `/images` date parser and export snapshot creation ✅
 
 **Description:** Parse `/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera]` in Asia/Jakarta, enforce half-open intervals and 24-hour limit, then snapshot selected image IDs into export job tables.
 
 **Acceptance criteria:**
-- [ ] Invalid formats are rejected with usage guidance.
-- [ ] Exact 24-hour range is accepted; over-24-hour range is rejected.
-- [ ] Cross-midnight Asia/Jakarta range converts correctly to UTC.
-- [ ] Snapshot rows are deterministic and stable.
+- [x] Invalid formats are rejected with usage guidance.
+- [x] Exact 24-hour range is accepted; over-24-hour range is rejected.
+- [x] Cross-midnight Asia/Jakarta range converts correctly to UTC.
+- [x] Snapshot rows are deterministic and stable.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_request` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_request` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 11
 
@@ -316,19 +316,19 @@
 
 ---
 
-## Task 14: Implement export worker ZIP parts and manifest
+## Task 14: Implement export worker ZIP parts and manifest ✅
 
 **Description:** Build ZIP files from `export_job_images`, include a CSV manifest, split parts at the 45 MiB Telegram-safe limit, send sequentially, and resume after restart.
 
 **Acceptance criteria:**
-- [ ] Every snapshot image appears exactly once in the manifest.
-- [ ] No image outside the snapshot is included.
-- [ ] ZIP parts are no larger than 45 MiB.
-- [ ] Restart resumes at the first unsent part.
-- [ ] Sent parts are deleted locally.
+- [x] Every snapshot image appears exactly once in the manifest.
+- [x] No image outside the snapshot is included.
+- [x] ZIP parts are no larger than 45 MiB.
+- [x] Restart resumes at the first unsent part.
+- [x] Sent parts are deleted locally.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_worker` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_worker` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Tasks 4 and 13
 
@@ -343,17 +343,17 @@
 
 ---
 
-## Task 15: Implement `/exports` and `/cancel`
+## Task 15: Implement `/exports` and `/cancel` ✅
 
 **Description:** Add Telegram commands to list a user's five most recent export jobs and cancel an export that has not begun Telegram upload.
 
 **Acceptance criteria:**
-- [ ] `/exports` lists only the requesting user's jobs.
-- [ ] `/cancel <job-id>` requires administrator role.
-- [ ] Cancellation is rejected once Telegram upload has begun.
+- [x] `/exports` lists only the requesting user's jobs.
+- [x] `/cancel <job-id>` requires administrator role.
+- [x] Cancellation is rejected once Telegram upload has begun.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_commands` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k export_commands` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Tasks 11 and 13
 
