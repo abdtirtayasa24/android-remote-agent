@@ -9,6 +9,50 @@ def read_doc(relative_path: str) -> str:
     return (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def test_core_context_documents_cover_architecture_and_implemented_features() -> None:
+    required_topics = {
+        "docs/ARCHITECTURE.md": [
+            "Architecture Overview",
+            "mermaid",
+            "Reference Baselines",
+            "Asia/Jakarta",
+            "TELEGRAM_ADMIN_USER_ID",
+            "FOR UPDATE SKIP LOCKED",
+            "capture -> validate -> compress -> queue",
+            "heartbeat -> api -> postgres",
+            "image -> motion_analysis -> frame_diff_v1",
+            "telegram_command -> authorize -> parse",
+            "retention -> claim_expired",
+        ],
+        "docs/IMPLEMENTED.md": [
+            "Implemented Features",
+            "Android Camera Agent",
+            "Telegram Bot and Commands",
+            "Retention and Storage Protection",
+            "Current Acceptance Status",
+        ],
+    }
+
+    for relative_path, topics in required_topics.items():
+        document = REPOSITORY_ROOT / relative_path
+        assert document.is_file(), relative_path
+        text = document.read_text(encoding="utf-8")
+        for topic in topics:
+            assert topic in text, f"{relative_path} is missing {topic!r}"
+
+
+def test_agents_file_requires_core_context_docs_before_work() -> None:
+    agents = read_doc("AGENTS.md")
+
+    for required_text in (
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "docs/IMPLEMENTED.md",
+        "before making code or documentation changes",
+    ):
+        assert required_text in agents
+
+
 def test_phase_5_operator_documents_exist_and_cover_required_topics() -> None:
     required_topics = {
         "docs/operator/server-installation.md": [
@@ -64,10 +108,12 @@ def test_phase_5_operator_documents_exist_and_cover_required_topics() -> None:
             assert topic in text, f"{relative_path} is missing {topic!r}"
 
 
-def test_readme_links_to_phase_5_operator_documents() -> None:
+def test_readme_links_to_core_and_operator_documents() -> None:
     readme = read_doc("README.md")
 
     for relative_path in (
+        "docs/ARCHITECTURE.md",
+        "docs/IMPLEMENTED.md",
         "docs/operator/server-installation.md",
         "docs/operator/android-installation.md",
         "docs/operator/credential-rotation.md",

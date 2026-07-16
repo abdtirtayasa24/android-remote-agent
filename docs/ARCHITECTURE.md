@@ -1,129 +1,416 @@
 # Architecture
 
-This document explains how the Android time-lapse security camera system is structured at runtime. It intentionally avoids repository layout and setup steps; those are covered in `README.md`.
+This document is the durable architecture summary for future contributors and agents. It replaces the need to reread the original long specification for day-to-day implementation work.
 
-## Technology Stack
+The project is an Android still-image time-lapse security camera system. An Android phone captures scheduled JPEG stills, stores them locally until upload succeeds, and reports health. A VPS ingests images and heartbeats, stores metadata in PostgreSQL and files on disk, runs worker jobs for health/motion/exports/retention/reconciliation, and exposes operations through Telegram.
 
-| Layer | Technology |
+## Goals and Non-Goals
+
+### MVP goals
+
+- Run the camera agent on Android 9+ without root using Termux, Termux:API, and Termux:Boot.
+- Capture one image every 60 seconds by default.
+- Resize captures to fit within 1280×720 and encode JPEG at quality 72 by default.
+- Queue failed uploads locally in SQLite and retry safely.
+- Upload to the VPS over HTTPS with revocable camera credentials.
+- Store image metadata in PostgreSQL and image files on the VPS filesystem.
+- Detect offline/degraded cameras and send deduplicated Telegram health alerts.
+- Detect motion by comparing scheduled still images with the previous valid scheduled image.
+- Group motion detections into five-minute events and send only the first image alert.
+- Allow authorized Telegram users to inspect status, retrieve latest images, and request ZIP exports.
+- Interpret Telegram date/time input in Asia/Jakarta; store and process backend timestamps as UTC.
+- Retain images for seven days by default and protect active exports from retention deletion.
+- Detect and repair or quarantine database/filesystem mismatches.
+- Deploy production as native systemd services on Ubuntu with Nginx and Certbot, not Docker Compose.
+
+### MVP non-goals
+
+- Continuous video recording or live streaming.
+- Facial recognition or AI object classification.
+- Cloud object storage.
+- A native Android application.
+- Remote control of Android system settings.
+- Guaranteed detection of motion that happens entirely between scheduled captures.
+- A web dashboard.
+
+## Reference Baselines
+
+Implementation decisions were checked against these primary references:
+
+- Ubuntu 24.04 LTS release notes and lifecycle: https://documentation.ubuntu.com/release-notes/24.04/
+- Termux project: https://termux.dev/en/
+- Termux:API: https://github.com/termux/termux-api
+- Termux:Boot: https://github.com/termux/termux-boot
+- FastAPI deployment concepts: https://fastapi.tiangolo.com/deployment/
+- Python Packaging `pyproject.toml` guide: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+- Ruff configuration and formatter: https://docs.astral.sh/ruff/configuration/
+- python-telegram-bot documentation: https://docs.python-telegram-bot.org/en/stable/
+- Telegram Bot API: https://core.telegram.org/bots/api
+- PostgreSQL version support: https://www.postgresql.org/support/versioning/
+- Nginx proxy module: https://nginx.org/en/docs/http/ngx_http_proxy_module.html
+- Certbot user guide: https://eff-certbot.readthedocs.io/en/stable/using.html
+- motionEye: https://github.com/motioneye-project/motioneye
+- Frigate: https://docs.frigate.video/
+
+The design borrows surveillance concepts from motionEye and Frigate, but deliberately avoids continuous streams, AI inference, and NVR complexity. The selected approach is a smaller custom pipeline: scheduled Android stills, server-side frame differencing, filesystem storage, PostgreSQL metadata, and Telegram operations.
+
+## Technology Baseline
+
+| Area | Selection |
 |---|---|
-| Camera device | Android 9+, Termux, Termux:API, Termux:Boot |
+| Android runtime | Android 9+, Termux, Termux:API, Termux:Boot |
 | Camera agent | Python, Pillow, HTTPX, SQLite |
-| API server | FastAPI, Uvicorn, Pydantic Settings |
-| Persistence | Neon PostgreSQL, SQLAlchemy asyncio, asyncpg, Alembic |
-| Image storage | VPS filesystem under `/srv/timelapse` |
-| Background processing | Native Python worker process managed by systemd |
-| Telegram interface | `python-telegram-bot` long polling |
-| Edge and TLS | Host-installed Nginx and Certbot |
-| Process management | Native systemd services |
-| Quality tooling | Pytest, pytest-asyncio, Ruff |
+| Host OS | Ubuntu Server 24.04 LTS |
+| Process manager | Native systemd services |
+| Public TLS/reverse proxy | Host-installed Nginx and Certbot |
+| Server Python | Python 3.12 in `/opt/android-remote/.venv` |
+| HTTP API | FastAPI with Uvicorn bound to loopback |
+| Database | Neon PostgreSQL: pooled runtime URL and direct migration URL |
+| ORM/driver | SQLAlchemy asyncio with asyncpg |
+| Migrations | Alembic |
+| Telegram | python-telegram-bot long polling |
+| Image processing | OpenCV headless and Pillow |
+| Testing | Pytest and pytest-asyncio |
+| Linting/formatting | Ruff |
+| Packaging | Plain `pip`, `server/pyproject.toml`, `camera-agent/requirements.txt` |
 
-## System Context
+Production deployment uses host-managed systemd services. Releases are copied under `/opt/android-remote/releases`, `/opt/android-remote/current` points at the active release, and `deploy-systemd.sh` installs the server package into a shared virtual environment before restarting services. No Poetry, uv, Pipenv, PDM, or dependency lockfile is required.
 
-```text
-Android phone
-  └─ Termux camera agent
-       ├─ Captures and compresses JPEGs
-       ├─ Stores pending uploads in SQLite
-       ├─ Uploads images over HTTPS
-       └─ Sends health heartbeats
+## Architecture Overview
 
-Internet / HTTPS
-  └─ Nginx on Ubuntu VPS
-       └─ Proxies public API routes to local FastAPI
+```mermaid
+flowchart LR
+    User[Authorized Telegram User]
+    Telegram[Telegram Bot API]
+    Internet[Internet / HTTPS]
 
-Ubuntu VPS
-  ├─ FastAPI API service
-  │    ├─ Authenticates camera credentials
-  │    ├─ Validates uploads and heartbeats
-  │    ├─ Stores image metadata in PostgreSQL
-  │    └─ Stores image files on disk
-  ├─ Worker service
-  │    ├─ Evaluates camera health
-  │    ├─ Runs motion analysis
-  │    ├─ Builds exports
-  │    ├─ Enforces retention
-  │    └─ Reconciles database/filesystem state
-  ├─ Telegram bot service
-  │    ├─ Authorizes Telegram users
-  │    ├─ Handles status/retrieval commands
-  │    └─ Delivers alerts and export files
-  └─ Neon PostgreSQL
-       └─ Stores cameras, credentials, images, heartbeats, motion events, exports, alerts, and audit events
+    subgraph Phone[Android 9+ Phone]
+        Agent[Termux Camera Agent]
+        TermuxAPI[Termux:API]
+        LocalDB[(SQLite Upload Queue)]
+        Pending[Pending JPEG Files]
+        Agent -->|capture and device metrics| TermuxAPI
+        Agent -->|compressed JPEG| Pending
+        Agent -->|queue state| LocalDB
+    end
+
+    subgraph VPS[Ubuntu 24.04 VPS]
+        Nginx[Nginx + Certbot]
+        subgraph Systemd[Native systemd services]
+            API[timelapse-api.service<br/>FastAPI API]
+            Worker[timelapse-worker.service<br/>Background Worker]
+            Bot[timelapse-bot.service<br/>Telegram Bot Long Polling]
+            Images[Image Storage<br/>/srv/timelapse/images]
+            Exports[Temporary Exports<br/>/srv/timelapse/exports]
+        end
+        DB[(Neon PostgreSQL)]
+        Nginx -->|proxy to 127.0.0.1:API_PORT| API
+        API --> DB
+        API --> Images
+        Worker --> DB
+        Worker --> Images
+        Worker --> Exports
+        Bot --> DB
+    end
+
+    Agent -->|images and heartbeats| Internet
+    Internet --> Nginx
+    Bot <--> Telegram
+    Telegram <--> User
 ```
+
+The system uses a store-and-forward architecture. The Android phone is responsible for capture, compression, validation, temporary queueing, upload, and heartbeat reporting. The VPS is responsible for durable storage, metadata indexing, motion comparison, health evaluation, retention, Telegram interaction, and ZIP generation.
+
+## Component Responsibilities
+
+### Android camera agent
+
+One long-running Python process runs cooperative loops for capture, upload, cleanup, and heartbeat reporting.
+
+```mermaid
+flowchart LR
+    Capture[Capture loop]
+    Upload[Upload loop]
+    Heartbeat[Heartbeat loop]
+    Cleanup[Cleanup loop]
+    Queue[(SQLite queue)]
+    Files[Pending files]
+    API[VPS API]
+
+    Capture -->|atomic JPEG write| Files
+    Capture -->|insert pending record| Queue
+    Upload -->|claim due item| Queue
+    Upload -->|read JPEG| Files
+    Upload -->|HTTPS multipart upload| API
+    Upload -->|confirm or reschedule| Queue
+    Upload -->|delete after confirmation| Files
+    Heartbeat -->|read queue metrics| Queue
+    Heartbeat -->|device health| API
+    Cleanup -->|enforce local queue limits| Queue
+    Cleanup -->|drop oldest scheduled files| Files
+```
+
+The agent should:
+
+1. Calculate capture timing from a monotonic clock.
+2. Invoke `termux-camera-photo` for the configured camera ID.
+3. Validate the raw file exists, is non-empty, and decodes.
+4. Apply EXIF orientation, resize, and JPEG compression.
+5. `fsync` and atomically rename the prepared image into the pending directory.
+6. Calculate SHA-256 and file size.
+7. Insert a pending queue row in SQLite.
+8. Upload independently from the capture loop so upload delays do not block future captures.
+9. Delete the local file only after the server returns `stored` or `already_stored`.
+10. Report dropped-image counts in heartbeats after local queue cleanup.
+
+### FastAPI API
+
+The API has intentionally narrow responsibilities:
+
+- authenticate camera credentials;
+- accept image uploads;
+- accept heartbeats;
+- expose liveness.
+
+The API does **not** run motion analysis, ZIP generation, retention, Telegram delivery, or reconciliation in request handlers. Long-running and expensive work belongs in workers.
+
+### Background worker
+
+One worker process is enough for MVP scale. It runs independent loops for:
+
+- health evaluation and alert deduplication;
+- heartbeat daily aggregation and detailed heartbeat expiry;
+- motion analysis and motion-event grouping;
+- pending motion alert retry;
+- export ZIP creation and Telegram delivery;
+- retention and emergency cleanup;
+- filesystem reconciliation.
+
+PostgreSQL rows and `FOR UPDATE SKIP LOCKED` provide safe claiming. Redis or another message broker is intentionally not required for the MVP.
+
+### Telegram bot
+
+The bot uses python-telegram-bot with asynchronous handlers and long polling. Command handlers authorize, validate, and create/read jobs. They do not perform expensive ZIP or image-processing work.
+
+Initial administrator access uses `TELEGRAM_ADMIN_USER_ID`; `TELEGRAM_ADMIN_CHAT_ID` is not used.
+
+## Public API Contracts
+
+### Image upload
+
+```http
+POST /api/v1/cameras/{camera_slug}/images
+Authorization: Bearer cam_<token-id>_<secret>
+Content-Type: multipart/form-data
+```
+
+Multipart fields:
+
+| Field | Rules |
+|---|---|
+| `capture_id` | UUID-format identifier, unique per capture |
+| `captured_at_utc` | RFC 3339 timestamp with UTC offset |
+| `capture_source` | `scheduled`, `manual`, or `motion` |
+| `sha256` | 64-character hex digest matching uploaded bytes |
+| `image` | JPEG file, maximum 5 MiB |
+
+Responses:
+
+- `201 stored` for a new stored capture.
+- `200 already_stored` for an idempotent retry.
+- `401` for invalid/revoked credentials.
+- `413` for images over 5 MiB.
+- `422` for invalid JPEG/checksum/dimensions/timestamps.
+- `507 storage_pressure_hard_limit` when VPS storage is below the hard threshold.
+
+```mermaid
+sequenceDiagram
+    participant Phone as Android Agent
+    participant API as Camera API
+    participant DB as PostgreSQL
+    participant FS as Image Filesystem
+
+    Phone->>API: multipart upload
+    API->>API: authenticate credential
+    API->>DB: find capture_id
+    alt Existing stored capture
+        DB-->>API: existing row
+        API-->>Phone: 200 already_stored
+    else New capture
+        API->>API: stream to temporary file
+        API->>API: validate size, checksum, JPEG
+        API->>DB: insert image row as staging
+        API->>FS: atomic rename to final path
+        API->>DB: mark stored and create motion analysis row
+        API-->>Phone: 201 stored
+    end
+```
+
+### Heartbeat
+
+```http
+POST /api/v1/cameras/{camera_slug}/heartbeats
+Authorization: Bearer cam_<token-id>_<secret>
+```
+
+Heartbeats include agent version, uptime, battery, temperature, available phone storage, queue size/count, oldest pending item, latest capture/upload timestamps, dropped image count, consecutive capture failures, and last error code.
+
+## Data Model Overview
+
+PostgreSQL stores:
+
+- `cameras`: identity, capture settings, retention settings, motion thresholds, health state, latest observed timestamps.
+- `camera_credentials`: token IDs and digests for revocable camera bearer credentials.
+- `images`: capture metadata, generated storage path, file size, dimensions, checksum, storage state, deletion marker.
+- `motion_analyses`: per-image frame-diff work state and metrics.
+- `motion_events` and `motion_event_images`: five-minute event grouping and representative alert image.
+- `camera_heartbeats`: detailed heartbeat history.
+- `heartbeat_daily_summaries`: daily aggregation before detailed heartbeat expiry.
+- `telegram_principals`: authorized Telegram users/chats and roles.
+- `alert_states`: persistent health-alert deduplication state.
+- `export_jobs`, `export_job_images`, `export_parts`: export snapshot, ZIP part metadata, and delivery state.
+- `audit_events`: security/worker/storage-repair audit trail.
+
+Image storage state values are:
+
+- `staging`: database row exists while a file is being finalized;
+- `stored`: metadata and filesystem copy are valid;
+- `deleting`: retention has claimed the row for deletion;
+- `missing`: file is gone or marked missing after retention/reconciliation.
 
 ## Core Flows
 
-### 1. Scheduled Capture and Upload
+### Scheduled capture and upload
 
-1. The Android agent schedules captures from a monotonic clock.
-2. It invokes `termux-camera-photo` for the configured camera ID.
-3. The captured file is decoded, EXIF-orientated, resized, and compressed as JPEG.
-4. The final local file is written atomically into the pending directory.
-5. A SQLite queue row is created with `capture_id`, timestamp, size, checksum, and file path.
-6. The upload loop claims due queue rows independently from the capture loop.
-7. The agent uploads multipart form data to `/api/v1/cameras/{camera_slug}/images`.
-8. The server authenticates the camera credential, validates checksum/JPEG/dimensions, stores metadata, and atomically installs the file.
-9. Duplicate retries with the same `capture_id` return `already_stored` and do not duplicate metadata.
-10. The Android agent deletes the local file only after a `stored` or `already_stored` confirmation.
+```bash
+android: schedule -> capture -> validate -> compress -> queue
+sqlite: pending -> claim_due -> upload_https -> wait_for_server
+server: authenticate -> validate_jpeg -> postgres:image -> filesystem:jpg
+server: stored|already_stored -> android:delete_local_file
+```
 
-### 2. Heartbeats and Camera Health
+1. Android schedules captures every configured interval.
+2. Capture output is validated, normalized, compressed, and queued locally.
+3. Upload loop claims due queue items and sends them to the VPS over HTTPS.
+4. Server stores metadata and file atomically enough to survive retries.
+5. Duplicate `capture_id` uploads are idempotent.
+6. Android deletes local pending files only after server confirmation.
 
-1. The Android agent sends a heartbeat every configured interval.
-2. The heartbeat includes runtime, queue, battery, storage, and recent capture/upload state.
-3. The API persists each heartbeat and updates camera `last_seen_at` fields.
-4. The worker classifies cameras as online, degraded, offline, or disabled.
-5. Alert state is persisted so unchanged conditions do not spam Telegram.
-6. Daily heartbeat summaries are created before detailed heartbeat rows expire.
+### Health and alerts
 
-### 3. Motion Processing
+```bash
+android: heartbeat -> api -> postgres
+worker: read_camera_state -> classify_health -> alert_states
+telegram: offline|degraded|recovery -> authorized_chat
+worker: daily_summary -> expire_detailed_heartbeats
+```
 
-1. Each accepted scheduled image creates a pending motion-analysis record.
-2. The worker claims pending analysis rows safely.
-3. `frame-diff-v1` compares the image with the previous valid scheduled image from the same camera.
-4. Metrics are saved with the analysis result.
-5. Positive detections are grouped into five-minute motion events.
-6. Only the first image in a motion event triggers a Telegram alert.
+1. Android sends heartbeats every configured heartbeat interval.
+2. API persists heartbeat details and updates camera `last_seen_at`, `last_capture_at`, and `last_upload_at`.
+3. Worker classifies health as online, degraded, offline, or disabled.
+4. Worker persists `alert_states` so unchanged conditions do not spam Telegram.
+5. Recovery alerts are also deduplicated.
+6. Telegram operational messages are English and user-facing timestamps are Asia/Jakarta.
 
-### 4. Telegram Retrieval and Export
+### Motion detection
 
-1. Telegram updates are received through long polling.
-2. Authorization checks the Telegram user ID before command handling.
-3. `/status` and `/latest` read current camera state and latest stored image metadata.
-4. `/images` parses an Asia/Jakarta date range and converts it to UTC.
-5. The server snapshots selected image IDs into export job rows using a half-open `[start, end)` interval.
-6. The export worker builds ZIP parts from the snapshot, writes a manifest, sends parts to Telegram, and removes completed artifacts.
-7. Retention excludes active export snapshots so files are not deleted while an export is being built or sent.
+```bash
+server: image -> motion_analysis -> frame_diff_v1
+worker: current_image + previous_image -> metrics -> motion_yes_no
+worker: motion_yes -> five_minute_event -> first_image_alert
+telegram: send_photo_once -> retry_if_pending
+```
 
-### 5. Retention and Reconciliation
+1. Each accepted scheduled image creates a pending motion-analysis row.
+2. Worker claims pending analysis rows with database locking.
+3. `frame-diff-v1` compares the current image with the previous valid scheduled image from the same camera.
+4. Static scenes produce no motion; controlled movement produces motion; large brightness shifts can be suppressed.
+5. Positive detections are grouped into events with a five-minute window.
+6. Only the first image of a new event is sent to Telegram.
 
-1. Retention calculates expiry from original capture time and camera retention settings.
-2. Eligible image rows are claimed in batches.
-3. Files are deleted before metadata is removed or tombstoned.
-4. Disk-pressure handling prioritizes stopping exports before deleting stored images.
-5. Reconciliation detects missing files, orphaned files, checksum mismatches, stale staging rows, and stale temporary/export files.
-6. Orphaned files are quarantined before final deletion.
+### Telegram retrieval and exports
 
-## Trust Boundaries
+```bash
+telegram_command -> authorize -> parse -> validate_range
+/images: jakarta_time -> utc_range -> snapshot_image_ids
+export_worker: snapshot -> zip_part + manifest -> telegram_document
+export_worker: sent -> delete_local_part -> complete_job
+```
 
-- Android camera credentials are bearer secrets and must only be stored on the phone and server-side metadata.
-- The React/web dashboard is not part of the MVP; clients must not access the database directly.
-- Telegram user data is untrusted until authorized by server-side records/environment configuration.
-- Uploaded filenames are ignored; server-side paths are generated from trusted camera metadata.
-- Nginx is the public entry point; FastAPI binds to loopback only.
-- PostgreSQL is not exposed by the VPS.
+1. Telegram updates arrive through long polling.
+2. Authorization checks Telegram user ID before command handling.
+3. Unauthorized users receive a generic denial and no camera details.
+4. `/status [camera]` returns health and queue summaries without filesystem paths.
+5. `/latest [camera]` sends the latest stored image.
+6. `/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera]` parses input as Asia/Jakarta, converts to UTC, enforces `[start, end)` and a maximum 24-hour range, then snapshots selected image IDs.
+7. Export worker builds ZIP parts from the snapshot and includes a CSV manifest.
+8. ZIP parts target at most 45 MiB; oversized single-image parts fail with a stable error.
+9. Telegram document sends are durable enough that already-sent parts are not resent after restart.
+10. Sent export parts are deleted locally.
 
-## Data Ownership and Identity
+### Retention, disk protection, and reconciliation
 
-- Camera identity is determined by the authenticated camera credential and requested camera slug.
-- Telegram identity is determined by Telegram user ID.
-- Export jobs preserve the destination chat at request time for deterministic delivery.
-- Worker jobs must be idempotent and safe to resume after process restart.
+```bash
+retention -> claim_expired -> skip_active_exports -> delete_file -> tombstone_row
+storage_pressure: normal|severe|hard -> reject_exports_or_uploads
+emergency_cleanup -> oldest_scheduled_images -> stop_when_safe
+reconciliation -> missing|orphan|mismatch|stale -> mark|quarantine|delete|audit
+```
+
+1. Retention computes expiry from capture time and per-camera retention days.
+2. Retention claims eligible rows and skips active exports and pending/processing motion analyses.
+3. Missing files during retention are treated as successful deletion and audited.
+4. Filesystem deletion errors restore rows to `stored` for retry.
+5. Hard disk pressure rejects new uploads with HTTP 507.
+6. Severe disk pressure rejects new exports.
+7. Emergency cleanup deletes oldest eligible scheduled images first.
+8. Reconciliation detects missing DB files, orphaned files, size/checksum mismatches, stale staging rows, stale temp files, and old export files.
+9. Orphaned files are moved to quarantine before deletion.
+
+## Time Policy
+
+- Store database timestamps in UTC.
+- Process worker comparisons and retention cutoffs in UTC.
+- Android API payload timestamp fields use UTC names and require an offset.
+- Telegram user input for `/images` is Asia/Jakarta.
+- Telegram user-facing output timestamps are Asia/Jakarta.
+- Do not introduce local server timezone dependencies; production sets `TZ=UTC`.
+
+## Trust Boundaries and Security
+
+- Android camera credentials are bearer secrets. Do not log plaintext credentials or Authorization headers.
+- Camera authentication uses token ID lookup plus digest comparison with a server-side pepper.
+- Telegram user data is untrusted until authorized by server-side records or `TELEGRAM_ADMIN_USER_ID` bootstrap.
+- Client filenames are ignored. Server storage paths are generated from trusted camera metadata.
+- Nginx is the public entry point. FastAPI and PostgreSQL are not public listeners.
+- Database URLs, bot tokens, camera credentials, peppers, `.env` files, generated ZIPs, and uploaded images must not be committed.
 
 ## Failure and Recovery Model
 
-- Phone offline: images remain in the SQLite queue and retry with backoff.
+- Phone offline: images remain in SQLite and retry with backoff.
 - Server/API unavailable: queued uploads remain local until confirmed.
-- Duplicate upload: server returns `already_stored` without creating another image row.
+- Duplicate upload: server returns `already_stored` without duplicating image rows.
 - Worker interruption: database job state supports reclaim/resume behavior.
-- Telegram delivery failure: export artifacts remain until retry or expiry.
-- Database/file mismatch: reconciliation repairs, marks, or quarantines according to file state.
+- Telegram delivery failure: health/motion/export state is persisted so work can retry or be audited.
+- Export interruption: restart resumes at the first truly unsent part; already-sent parts are deleted without resending.
+- Retention/export race: export snapshot and retention use row locking so active or locked images are protected.
+- Database/file mismatch: reconciliation marks missing rows, audits mismatches, quarantines orphans, and removes stale temp/export files.
+
+## Deployment Model
+
+Production scripts live in `infrastructure/`:
+
+- `bootstrap-ubuntu.sh`: installs OS packages, creates directories, configures Nginx/UFW basics.
+- `deploy-systemd.sh`: validates environment, installs the server package, runs migrations, installs systemd/Nginx units, obtains certificates, starts services.
+- `verify-foundation.sh`: validates deployment foundation.
+- `camera-admin.sh`: runs installed camera credential administration commands.
+
+Systemd units:
+
+- `timelapse-api.service`
+- `timelapse-worker.service`
+- `timelapse-bot.service`
+- `timelapse-migrate.service`
+- `timelapse-camera.target`
+
+Operator procedures are documented under `docs/operator/`.

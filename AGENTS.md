@@ -4,6 +4,16 @@ Guidelines for AI agents and contributors working in this repository.
 
 This file is a stable project rulebook. Do not change it unless the change is necessary and explicitly approved by a human maintainer.
 
+## Required Reading Before Work
+
+Agents and contributors are required to read these files first before making code or documentation changes inside this codebase:
+
+1. `README.md` — setup, repository layout, common commands, and production entry points.
+2. `docs/ARCHITECTURE.md` — durable architecture context, core flows, data model, trust boundaries, and deployment model.
+3. `docs/IMPLEMENTED.md` — current implemented feature inventory and remaining real-environment acceptance work.
+
+If a task touches operations, deployment, credential rotation, incidents, Android setup, or acceptance evidence, also read the relevant document under `docs/operator/`.
+
 ## Project Principles
 
 - Preserve the MVP scope: Android still-image time-lapse security camera, VPS ingestion/storage, motion/health workers, and Telegram operations.
@@ -13,17 +23,11 @@ This file is a stable project rulebook. Do not change it unless the change is ne
 - Keep runtime behavior out of request handlers when it belongs in workers.
 - Keep all timestamps stored and processed as UTC unless a user-facing Telegram date requires Asia/Jakarta conversion.
 
-## Implementation Order
+## Current Project Status and Work Selection
 
-Follow the current task plan unless a human changes priority:
+The old `tasks/` planning folder has been removed. Use `docs/IMPLEMENTED.md` for the current feature inventory and `docs/operator/acceptance-coverage.md` plus `docs/operator/soak-test-report.md` for remaining real-device/VPS acceptance work.
 
-1. Stabilize quality gates.
-2. Camera health worker and alerts.
-3. Motion detection worker and event grouping.
-4. Telegram authorization and retrieval commands.
-5. Export generation and delivery.
-6. Retention, disk protection, and reconciliation.
-7. QA, operations docs, and soak-test evidence.
+Most MVP code paths are implemented. Before adding new behavior, confirm whether the requested change is a bug fix, acceptance evidence, operator documentation, hardening, or an explicitly requested enhancement. Do not resurrect the removed task plan unless a human maintainer asks for a new planning artifact.
 
 When implementing behavior, use TDD:
 
@@ -51,9 +55,10 @@ When implementing behavior, use TDD:
 - Production deployment uses native systemd services and a shared Python virtual environment, not Docker Compose.
 - The database target is Neon PostgreSQL with pooled runtime and direct migration URLs.
 - Telegram operational messages must be English only.
+- Telegram user-facing timestamps must display in `Asia/Jakarta`; Telegram date/time input, including `/images`, is interpreted as `Asia/Jakarta` and converted to UTC internally.
 - Initial Telegram administrator access uses `TELEGRAM_ADMIN_USER_ID`; do not require `TELEGRAM_ADMIN_CHAT_ID`.
 - Use `alert_states` for persistent alert deduplication.
-- Heartbeat daily aggregation and detailed heartbeat expiry are required Milestone 5 scope.
+- Preserve heartbeat daily aggregation and detailed heartbeat expiry.
 
 ## Security Do's and Don'ts
 
