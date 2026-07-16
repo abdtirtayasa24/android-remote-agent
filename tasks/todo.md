@@ -1,19 +1,19 @@
 # Task List: Continue Android Time-Lapse Security Camera MVP
 
-## Task 1: Make existing lint/format gate pass without behavior changes
+## Task 1: Make existing lint/format gate pass without behavior changes ✅
 
 **Description:** Clean up current Ruff and format violations in server and camera-agent code/tests without changing runtime behavior.
 
 **Acceptance criteria:**
-- [ ] Ruff check passes for `server/src server/tests camera-agent/src camera-agent/tests`.
-- [ ] Ruff format check passes for the same paths.
-- [ ] Existing tests still pass.
+- [x] Ruff check passes for `server/src server/tests camera-agent/src camera-agent/tests`.
+- [x] Ruff format check passes for the same paths.
+- [x] Existing tests still pass.
 
 **Verification:**
-- [ ] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q`
-- [ ] `.venv/bin/ruff check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
-- [ ] `.venv/bin/ruff format --check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
+- [x] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q`
+- [x] `.venv/bin/ruff check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
+- [x] `.venv/bin/ruff format --check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
 
 **Dependencies:** None
 

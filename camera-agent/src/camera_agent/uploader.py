@@ -45,7 +45,7 @@ def retry_delay_seconds(
         )
     ]
 
-    factor = jitter_factor if jitter_factor is not None else random.uniform(0.8, 1.2)
+    factor = jitter_factor if jitter_factor is not None else random.uniform(0.8, 1.2)  # noqa: S311
 
     return max(
         1,

@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from timelapse.api.main import app
 
 

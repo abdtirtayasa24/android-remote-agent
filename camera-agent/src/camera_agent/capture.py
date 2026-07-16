@@ -4,15 +4,13 @@ import hashlib
 import os
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from camera_agent.configuration import AgentConfig
-
-UTC = timezone.utc
 
 
 class CaptureError(RuntimeError):
@@ -119,8 +117,8 @@ def _invoke_termux_camera(
     timeout_seconds: int,
 ) -> None:
     try:
-        result = subprocess.run(
-            [
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
                 "termux-camera-photo",
                 "-c",
                 str(camera_id),
@@ -216,12 +214,7 @@ def _validate_prepared_jpeg(
 
             width, height = image.size
 
-            if (
-                width <= 0
-                or height <= 0
-                or width > maximum_width
-                or height > maximum_height
-            ):
+            if width <= 0 or height <= 0 or width > maximum_width or height > maximum_height:
                 raise CaptureError("prepared_image_dimensions_invalid")
 
             image.load()

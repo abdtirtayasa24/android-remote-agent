@@ -16,8 +16,8 @@ from camera_agent.capture import (
 )
 from camera_agent.cleanup import cleanup_loop
 from camera_agent.configuration import (
-    ConfigurationError,
     AgentConfig,
+    ConfigurationError,
     load_config,
 )
 from camera_agent.heartbeat import heartbeat_loop
@@ -105,8 +105,7 @@ async def capture_loop(
 
         if next_capture <= current_time:
             missed_intervals = (
-                int((current_time - next_capture) // config.capture_interval_seconds)
-                + 1
+                int((current_time - next_capture) // config.capture_interval_seconds) + 1
             )
 
             next_capture += missed_intervals * config.capture_interval_seconds

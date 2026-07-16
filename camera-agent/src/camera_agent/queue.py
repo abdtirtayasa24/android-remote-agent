@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Iterator
-
-UTC = timezone.utc
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS upload_queue (

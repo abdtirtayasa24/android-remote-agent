@@ -6,7 +6,7 @@ import logging
 import shutil
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -15,8 +15,6 @@ from camera_agent.configuration import AgentConfig
 from camera_agent.queue import QueueStore
 
 logger = logging.getLogger(__name__)
-
-UTC = timezone.utc
 
 
 async def heartbeat_loop(
@@ -73,9 +71,7 @@ async def send_heartbeat(
 
     if runtime.consecutive_heartbeat_failures:
         last_error_code = (
-            "heartbeat_recovered_after_"
-            f"{runtime.consecutive_heartbeat_failures}"
-            "_failures"
+            f"heartbeat_recovered_after_{runtime.consecutive_heartbeat_failures}_failures"
         )
 
     payload = {
@@ -158,8 +154,8 @@ async def send_heartbeat(
 
 def _read_battery_status() -> dict[str, Any]:
     try:
-        result = subprocess.run(
-            ["termux-battery-status"],
+        result = subprocess.run(  # noqa: S603
+            ["termux-battery-status"],  # noqa: S607
             check=False,
             capture_output=True,
             text=True,

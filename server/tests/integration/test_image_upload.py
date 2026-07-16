@@ -7,7 +7,6 @@ from uuid import uuid4
 import httpx
 from PIL import Image
 from sqlalchemy import func, select
-
 from timelapse.database import get_session_factory
 from timelapse.models.entities import Image as StoredImage
 

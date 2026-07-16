@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 from PIL import Image
-
 from timelapse.configuration import Settings
 from timelapse.services.image_files import (
     UploadRejectedError,

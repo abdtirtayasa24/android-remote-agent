@@ -4,9 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from PIL import Image
-
 from camera_agent.compressor import InvalidCaptureError, normalize_jpeg
+from PIL import Image
 
 
 class NormalizeJpegTests(unittest.TestCase):
@@ -25,9 +24,7 @@ class NormalizeJpegTests(unittest.TestCase):
                 quality=72,
             )
 
-            self.assertEqual(
-                (metadata.width_pixels, metadata.height_pixels), (1280, 640)
-            )
+            self.assertEqual((metadata.width_pixels, metadata.height_pixels), (1280, 640))
             self.assertGreater(metadata.file_size_bytes, 0)
             self.assertEqual(len(metadata.sha256), 64)
 

@@ -189,12 +189,9 @@ def _validate_config(config: AgentConfig) -> None:
             "localhost",
         }
 
-        if not (
-            config.allow_insecure_http and local_host and parsed_url.scheme == "http"
-        ):
+        if not (config.allow_insecure_http and local_host and parsed_url.scheme == "http"):
             raise ConfigurationError(
-                "api_base_url must use HTTPS; "
-                "insecure HTTP is allowed only for localhost"
+                "api_base_url must use HTTPS; insecure HTTP is allowed only for localhost"
             )
 
     if not _CAMERA_SLUG_PATTERN.fullmatch(config.camera_slug):

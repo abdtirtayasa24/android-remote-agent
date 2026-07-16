@@ -47,12 +47,12 @@ Quality gate cleanup
 ## Task List
 
 ### Phase 0: Stabilize the Quality Gate
-- [ ] Task 1: Make existing lint/format gate pass without behavior changes
+- [x] Task 1: Make existing lint/format gate pass without behavior changes
 
 ### Checkpoint: Preflight
-- [ ] Existing server unit tests pass
-- [ ] Existing camera-agent unit tests pass
-- [ ] Shared Ruff check and format check pass
+- [x] Existing server unit tests pass
+- [x] Existing camera-agent unit tests pass
+- [x] Shared Ruff check and format check pass
 
 ### Phase 1: Milestone 5 — Camera Health
 - [ ] Task 2: Add health-state classification service

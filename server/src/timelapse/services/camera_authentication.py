@@ -46,8 +46,8 @@ async def record_credential_use(credential_id: UUID) -> None:
 async def authenticate_camera(
     request: Request,
     background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_session),   # noqa: B008
-    settings: Settings = Depends(get_settings),     # noqa: B008
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> AuthenticatedCamera:
     if settings.require_https and request.url.scheme != "https":
         raise HTTPException(

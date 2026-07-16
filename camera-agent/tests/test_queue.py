@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import (
+    UTC,
     datetime,
     timedelta,
-    timezone,
 )
 from pathlib import Path
 from uuid import uuid4
@@ -13,8 +13,6 @@ from camera_agent.queue import (
     QueueStore,
     utc_datetime_text,
 )
-
-UTC = timezone.utc
 
 
 def create_item(

@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
@@ -15,9 +15,7 @@ _FILENAME_PATTERN = re.compile(r"^(?P<timestamp>\d{8}T\d{6}Z)_[0-9a-fA-F-]{36}\.
 
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Validate Milestone 1 capture evidence"
-    )
+    parser = argparse.ArgumentParser(description="Validate Milestone 1 capture evidence")
     parser.add_argument(
         "--config",
         type=Path,
@@ -35,7 +33,7 @@ def parse_utc(value: str) -> datetime:
     parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is None:
         raise ValueError("UTC timestamp must include Z or an explicit offset")
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def capture_time_from_name(path: Path) -> datetime:
@@ -45,7 +43,7 @@ def capture_time_from_name(path: Path) -> datetime:
     return datetime.strptime(
         match.group("timestamp"),
         "%Y%m%dT%H%M%SZ",
-    ).replace(tzinfo=timezone.utc)
+    ).replace(tzinfo=UTC)
 
 
 def validate_capture(
@@ -74,9 +72,7 @@ def validate_capture(
 
     return {
         "path": str(path),
-        "captured_at_utc": capture_time_from_name(path)
-        .isoformat()
-        .replace("+00:00", "Z"),
+        "captured_at_utc": capture_time_from_name(path).isoformat().replace("+00:00", "Z"),
         "width": width,
         "height": height,
         "size_bytes": path.stat().st_size,
@@ -133,14 +129,10 @@ def main(argv: list[str] | None = None) -> int:
         "valid_capture_count": len(valid),
         "invalid_capture_count": len(invalid),
         "first_capture_at_utc": (
-            capture_times[0].isoformat().replace("+00:00", "Z")
-            if capture_times
-            else None
+            capture_times[0].isoformat().replace("+00:00", "Z") if capture_times else None
         ),
         "last_capture_at_utc": (
-            capture_times[-1].isoformat().replace("+00:00", "Z")
-            if capture_times
-            else None
+            capture_times[-1].isoformat().replace("+00:00", "Z") if capture_times else None
         ),
         "maximum_gap_seconds": maximum_gap,
         "invalid_files": invalid,

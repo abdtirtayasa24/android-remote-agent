@@ -33,9 +33,7 @@ def normalize_jpeg(
     _validate_source_file(source_path)
 
     destination_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = destination_path.with_name(
-        f".{destination_path.name}.{uuid4().hex}.tmp"
-    )
+    temporary_path = destination_path.with_name(f".{destination_path.name}.{uuid4().hex}.tmp")
 
     try:
         with Image.open(source_path) as source_image:
@@ -107,9 +105,7 @@ def _verify_output_jpeg(
         width_pixels, height_pixels = image.size
 
     if width_pixels > maximum_width or height_pixels > maximum_height:
-        raise InvalidCaptureError(
-            "normalized output exceeds configured maximum dimensions"
-        )
+        raise InvalidCaptureError("normalized output exceeds configured maximum dimensions")
     if width_pixels <= 0 or height_pixels <= 0:
         raise InvalidCaptureError("normalized output has invalid dimensions")
 

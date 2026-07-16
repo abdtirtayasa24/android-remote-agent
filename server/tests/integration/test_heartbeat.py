@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
-
 from timelapse.database import (
     get_session_factory,
 )
@@ -12,8 +11,6 @@ from timelapse.models.entities import (
     Camera,
     CameraHeartbeat,
 )
-
-UTC = UTC
 
 
 async def test_authenticated_heartbeat_is_stored(

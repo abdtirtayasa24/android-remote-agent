@@ -13,7 +13,6 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
-
 from timelapse.configuration import get_settings
 from timelapse.database import (
     close_database,

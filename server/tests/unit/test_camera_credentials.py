@@ -47,7 +47,7 @@ def test_camera_secret_digest_rejects_wrong_secret() -> None:
     )
 
     assert not camera_secret_matches(
-        secret="incorrect-secret",      # noqa: S106
+        secret="incorrect-secret",  # noqa: S106
         expected_digest=digest,
         pepper=pepper,
     )
