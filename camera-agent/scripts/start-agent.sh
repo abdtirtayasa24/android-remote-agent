@@ -1,25 +1,62 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
 
-SCRIPT_DIRECTORY="$(
-    CDPATH= cd -- "$(dirname -- "$0")"
-    pwd
-)"
+TIMELAPSE_HOME="${TIMELAPSE_HOME:-$HOME/timelapse}"
+APP_DIRECTORY="$TIMELAPSE_HOME/app"
+CONFIG_PATH="$TIMELAPSE_HOME/config.json"
+LOG_DIRECTORY="$TIMELAPSE_HOME/logs"
+RUN_DIRECTORY="$TIMELAPSE_HOME/run"
+LOG_PATH="$LOG_DIRECTORY/camera-agent.log"
+PID_PATH="$RUN_DIRECTORY/camera-agent.pid"
 
-CAMERA_AGENT_DIRECTORY="$(
-    CDPATH= cd -- "${SCRIPT_DIRECTORY}/.."
-    pwd
-)"
+mkdir -p "$LOG_DIRECTORY" "$RUN_DIRECTORY"
+chmod 700 "$LOG_DIRECTORY" "$RUN_DIRECTORY"
 
-CONFIG_FILE="${
-    CAMERA_AGENT_CONFIG:-
-    $HOME/timelapse/config.json
-}"
+if [ -n "${PYTHONPATH:-}" ]; then
+    PYTHONPATH="$APP_DIRECTORY:$PYTHONPATH"
+else
+    PYTHONPATH="$APP_DIRECTORY"
+fi
 
-export PYTHONDONTWRITEBYTECODE=1
-export PYTHONUNBUFFERED=1
-export PYTHONPATH="${CAMERA_AGENT_DIRECTORY}/src"
+export PYTHONPATH
 
-exec python \
-    -m camera_agent.main \
-    --config "$CONFIG_FILE"
+cleanup() {
+    rm -f "$PID_PATH"
+    termux-wake-unlock >/dev/null 2>&1 || true
+}
+
+trap cleanup EXIT HUP INT TERM
+
+if ! command -v python >/dev/null 2>&1; then
+    echo "Python was not found. Run: pkg install python" >&2
+    exit 1
+fi
+
+if ! command -v termux-wake-lock >/dev/null 2>&1; then
+    echo "termux-wake-lock was not found. Run: pkg install termux-api" >&2
+    exit 1
+fi
+
+if [ ! -f "$CONFIG_PATH" ]; then
+    echo "Configuration file does not exist: $CONFIG_PATH" >&2
+    exit 1
+fi
+
+if [ ! -d "$APP_DIRECTORY/camera_agent" ]; then
+    echo "Camera agent package does not exist:" >&2
+    echo "  $APP_DIRECTORY/camera_agent" >&2
+    echo "Run the installer again." >&2
+    exit 1
+fi
+
+termux-wake-lock
+
+printf '%s\n' "$$" > "$PID_PATH"
+
+echo "Starting camera agent..."
+echo "Configuration: $CONFIG_PATH"
+echo "Log file: $LOG_PATH"
+
+python -m camera_agent.main \
+    --config "$CONFIG_PATH" \
+    "$@" >> "$LOG_PATH" 2>&1
