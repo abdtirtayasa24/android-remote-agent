@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     telegram_admin_user_id: int | None = None
     health_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
     heartbeat_aggregation_interval_seconds: int = Field(default=3600, ge=60, le=86400)
+    motion_worker_interval_seconds: int = Field(default=30, ge=5, le=3600)
 
     @field_validator(
         "database_url",

@@ -65,19 +65,19 @@ Quality gate cleanup
 - [x] Offline is detected within 16 minutes in tests
 - [x] Recovery is emitted once in tests
 - [x] Degraded threshold transitions are tested
-- [ ] Worker can run continuously without crashing when database is available (pending local `TEST_DATABASE_URL` verification)
+- [x] Worker can run continuously without crashing when database is available
 
 ### Phase 2: Milestone 6 — Motion Detection
-- [ ] Task 7: Implement `frame-diff-v1` as a pure motion detector
-- [ ] Task 8: Implement motion-analysis worker claiming and stale recovery
-- [ ] Task 9: Implement five-minute motion event grouping
-- [ ] Task 10: Send first-image Telegram motion alert
+- [x] Task 7: Implement `frame-diff-v1` as a pure motion detector
+- [x] Task 8: Implement motion-analysis worker claiming and stale recovery
+- [x] Task 9: Implement five-minute motion event grouping
+- [x] Task 10: Send first-image Telegram motion alert
 
 ### Checkpoint: Milestone 6
-- [ ] Static scene does not alert in controlled tests
-- [ ] Person movement is detected in controlled tests
-- [ ] Multiple detections within five minutes produce one alert
-- [ ] Failed analysis never deletes or corrupts the image row
+- [x] Static scene does not alert in controlled tests
+- [x] Person movement is detected in controlled tests
+- [x] Multiple detections within five minutes produce one alert
+- [x] Failed analysis never deletes or corrupts the image row
 
 ### Phase 3: Milestone 7 — Telegram Retrieval and Exports
 - [ ] Task 11: Implement Telegram authorization middleware and bot bootstrap

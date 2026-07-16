@@ -66,5 +66,20 @@ def format_health_recovery_message(
     )
 
 
+def format_motion_alert_caption(
+    *,
+    camera_slug: str,
+    camera_display_name: str,
+    detected_at: datetime,
+) -> str:
+    return "\n".join(
+        (
+            f"Motion detected — {camera_display_name}",
+            f"Camera: {camera_slug}",
+            f"Time: {_format_utc(detected_at)} UTC",
+        )
+    )
+
+
 def _format_utc(value: datetime) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")

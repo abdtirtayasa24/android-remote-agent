@@ -58,7 +58,7 @@
 - [x] State transitions are committed atomically and safe to rerun.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` with `TEST_DATABASE_URL` configured
 - [x] Unit-only health tests pass when no test database is configured
 
 **Dependencies:** Task 2
@@ -107,7 +107,7 @@
 - [x] Alert outcomes are recorded without storing secrets.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Tasks 3 and 4
 
@@ -133,7 +133,7 @@
 
 **Verification:**
 - [x] Unit-only heartbeat aggregation tests pass when no test database is configured
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k heartbeat` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k heartbeat` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 3
 
@@ -148,18 +148,18 @@
 
 ---
 
-## Task 7: Implement `frame-diff-v1` as a pure motion detector
+## Task 7: Implement `frame-diff-v1` as a pure motion detector ✅
 
 **Description:** Implement the OpenCV frame-difference algorithm as a pure function that accepts image paths/config thresholds and returns metrics plus detection/suppression status.
 
 **Acceptance criteria:**
-- [ ] Static scene returns no motion.
-- [ ] Controlled movement returns motion.
-- [ ] Large brightness shift can be suppressed as lighting change.
-- [ ] Missing/invalid image inputs return a structured skip/failure result.
+- [x] Static scene returns no motion.
+- [x] Controlled movement returns motion.
+- [x] Large brightness shift can be suppressed as lighting change.
+- [x] Missing/invalid image inputs return a structured skip/failure result.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q -k motion`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q -k motion`
 
 **Dependencies:** Task 1
 
@@ -171,18 +171,18 @@
 
 ---
 
-## Task 8: Implement motion-analysis worker claiming and stale recovery
+## Task 8: Implement motion-analysis worker claiming and stale recovery ✅
 
 **Description:** Process pending `motion_analyses` rows with safe claiming, update status/metrics, and recover stale processing rows.
 
 **Acceptance criteria:**
-- [ ] Pending analyses are claimed without double processing.
-- [ ] Completed analyses store metrics and motion result.
-- [ ] Failed/skipped analyses keep the image row intact.
-- [ ] Stale processing rows are reclaimable.
+- [x] Pending analyses are claimed without double processing.
+- [x] Completed analyses store metrics and motion result.
+- [x] Failed/skipped analyses keep the image row intact.
+- [x] Stale processing rows are reclaimable.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k motion` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k motion` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 7
 
@@ -195,17 +195,17 @@
 
 ---
 
-## Task 9: Implement five-minute motion event grouping
+## Task 9: Implement five-minute motion event grouping ✅
 
 **Description:** Group motion detections into open events and append detections within the configured five-minute window.
 
 **Acceptance criteria:**
-- [ ] First detection creates a motion event.
-- [ ] Detection within five minutes appends to the event and does not request a second alert.
-- [ ] New detection after the window creates a new event.
+- [x] First detection creates a motion event.
+- [x] Detection within five minutes appends to the event and does not request a second alert.
+- [x] New detection after the window creates a new event.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration -q -k motion_event` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/integration -q -k motion` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 8
 
@@ -218,17 +218,17 @@
 
 ---
 
-## Task 10: Send first-image Telegram motion alert
+## Task 10: Send first-image Telegram motion alert ✅
 
 **Description:** Send only the first detected image for a new motion event to authorized Telegram recipients.
 
 **Acceptance criteria:**
-- [ ] New motion event queues/sends one photo alert.
-- [ ] Detections appended within five minutes do not send another photo.
-- [ ] Telegram failure does not fail or delete motion analysis/image records.
+- [x] New motion event queues/sends one photo alert.
+- [x] Detections appended within five minutes do not send another photo.
+- [x] Telegram failure does not fail or delete motion analysis/image records.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k motion_alert` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k motion` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Tasks 4 and 9
 

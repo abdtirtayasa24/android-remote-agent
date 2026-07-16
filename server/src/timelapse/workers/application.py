@@ -11,6 +11,7 @@ from timelapse.database import close_database, session_scope
 from timelapse.logging import configure_logging
 from timelapse.services.health import evaluate_all_cameras_once
 from timelapse.services.heartbeat_aggregation import aggregate_due_heartbeats_once
+from timelapse.services.motion_worker import process_due_motion_analyses_once
 from timelapse.services.telegram_client import TelegramClient
 
 LOGGER = logging.getLogger(__name__)
@@ -71,6 +72,24 @@ async def run_heartbeat_aggregation_once() -> int:
         )
 
 
+async def run_motion_analysis_once() -> int:
+    settings = get_settings()
+    sender = None
+
+    if settings.telegram_bot_token is not None:
+        sender = TelegramClient(
+            bot_token=settings.telegram_bot_token.get_secret_value(),
+        )
+
+    async with session_scope() as session:
+        return await process_due_motion_analyses_once(
+            session=session,
+            now=datetime.now(UTC),
+            sender=sender,
+            admin_user_id=settings.telegram_admin_user_id,
+        )
+
+
 async def run_worker() -> None:
     settings = get_settings()
     configure_logging("worker", settings.log_level)
@@ -101,6 +120,15 @@ async def run_worker() -> None:
                 operation_name="heartbeat_aggregation",
             ),
             name="heartbeat-aggregation-loop",
+        ),
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.motion_worker_interval_seconds,
+                operation=run_motion_analysis_once,
+                operation_name="motion_analysis",
+            ),
+            name="motion-analysis-loop",
         ),
     ]
 
