@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     require_https: bool = True
 
     storage_root: Path = Path("/srv/timelapse")
+    storage_hard_min_free_bytes: int = Field(default=512 * 1024 * 1024, ge=0)
+    storage_severe_min_free_bytes: int = Field(default=1024 * 1024 * 1024, ge=0)
     public_domain: str | None = None
 
     telegram_bot_token: SecretStr | None = None
@@ -57,6 +59,8 @@ class Settings(BaseSettings):
     health_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
     heartbeat_aggregation_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     motion_worker_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    retention_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
+    reconciliation_worker_interval_seconds: int = Field(default=3600, ge=60, le=86400)
 
     @field_validator(
         "database_url",

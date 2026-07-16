@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from timelapse.models.entities import Camera, ExportJob, ExportJobImage, ExportPart, Image
 from timelapse.models.enums import ImageStorageState, JobStatus
+from timelapse.services.storage_pressure import StoragePressureState
 
 
 class ExportRequestError(ValueError):
@@ -30,19 +31,28 @@ async def create_export_request(
     *,
     session: AsyncSession,
     request: ExportRequest,
+    storage_pressure_state: StoragePressureState | None = None,
 ) -> ExportJob:
+    if storage_pressure_state in {
+        StoragePressureState.SEVERE,
+        StoragePressureState.HARD_LIMIT,
+    }:
+        raise ExportRequestError("storage_pressure_severe")
+
     camera = await _resolve_export_camera(session=session, camera_slug=request.camera_slug)
-    image_ids = (
+    images = (
         await session.scalars(
-            select(Image.id)
+            select(Image)
             .where(Image.camera_id == camera.id)
             .where(Image.storage_state == ImageStorageState.STORED)
             .where(Image.deleted_at.is_(None))
             .where(Image.captured_at_utc >= request.start_at_utc)
             .where(Image.captured_at_utc < request.end_at_utc)
             .order_by(Image.captured_at_utc, Image.id)
+            .with_for_update(of=Image, skip_locked=True)
         )
     ).all()
+    image_ids = [image.id for image in images]
     job = ExportJob(
         requested_by_user_id=request.requested_by_user_id,
         destination_chat_id=request.destination_chat_id,

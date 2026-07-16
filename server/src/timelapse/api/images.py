@@ -29,6 +29,7 @@ from timelapse.services.image_upload import (
     parse_captured_at_utc,
     store_image_upload,
 )
+from timelapse.services.storage_pressure import reject_upload_if_hard_limit
 
 router = APIRouter(
     prefix="/api/v1/cameras",
@@ -48,6 +49,7 @@ router = APIRouter(
         413: {"description": "Image exceeds 5 MiB"},
         422: {"description": "Invalid upload"},
         500: {"description": "Image storage failed"},
+        507: {"description": "Insufficient storage"},
     },
 )
 async def upload_image(
@@ -89,6 +91,7 @@ async def upload_image(
 
     try:
         parsed_captured_at = parse_captured_at_utc(captured_at_utc)
+        reject_upload_if_hard_limit(settings)
 
         validated_upload = await receive_and_validate_upload(
             upload_file=image,

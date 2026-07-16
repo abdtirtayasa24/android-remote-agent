@@ -94,14 +94,14 @@ Quality gate cleanup
 - [x] Interrupted export resumes at the first unsent part
 
 ### Phase 4: Milestone 8 — Retention and Storage Protection
-- [ ] Task 16: Implement retention eligibility and deletion worker
-- [ ] Task 17: Implement disk pressure checks and HTTP 507 upload guard
-- [ ] Task 18: Implement filesystem reconciliation worker
+- [x] Task 16: Implement retention eligibility and deletion worker
+- [x] Task 17: Implement disk pressure checks and HTTP 507 upload guard
+- [x] Task 18: Implement filesystem reconciliation worker
 
 ### Checkpoint: Milestone 8
-- [ ] Expired images are removed while active-export images remain
-- [ ] Low disk state rejects new uploads safely at the hard threshold
-- [ ] Missing files, orphaned files, checksum mismatches, old staging rows, and stale temp files are detected
+- [x] Expired images are removed while active-export images remain
+- [x] Low disk state rejects new uploads safely at the hard threshold
+- [x] Missing files, orphaned files, checksum mismatches, old staging rows, and stale temp files are detected
 
 ### Phase 5: Milestone 9 — QA and Handover
 - [ ] Task 19: Complete automated coverage for MVP acceptance scenarios

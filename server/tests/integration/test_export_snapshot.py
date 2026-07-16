@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -46,6 +47,47 @@ async def add_image(*, camera_id, storage_root: Path, captured_at: datetime) -> 
         session.add(image)
         await session.flush()
         return image
+
+
+async def test_export_snapshot_skips_locked_images(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera_fixture = await create_camera(slug="front-door")
+    session_factory = get_session_factory()
+
+    async with session_factory() as session:
+        camera = await session.scalar(select(Camera).where(Camera.slug == camera_fixture.slug))
+        camera_id = camera.id
+
+    locked = await add_image(camera_id=camera_id, storage_root=tmp_path, captured_at=NOW)
+
+    async with session_factory() as locking_session:
+        async with locking_session.begin():
+            await locking_session.scalar(
+                select(Image).where(Image.id == locked.id).with_for_update()
+            )
+
+            async with session_scope() as session:
+                job = await asyncio.wait_for(
+                    create_export_request(
+                        session=session,
+                        request=ExportRequest(
+                            requested_by_user_id=123,
+                            destination_chat_id=456,
+                            start_at_utc=NOW - timedelta(minutes=1),
+                            end_at_utc=NOW + timedelta(minutes=1),
+                            camera_slug="front-door",
+                        ),
+                    ),
+                    timeout=1,
+                )
+
+    async with session_factory() as session:
+        snapshot_rows = (await session.scalars(select(ExportJobImage))).all()
+
+    assert job.matching_image_count == 0
+    assert snapshot_rows == []
 
 
 async def test_export_snapshot_is_deterministic_and_half_open(

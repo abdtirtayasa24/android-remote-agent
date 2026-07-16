@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from timelapse.bot.authorization import AuthorizedTelegramUser
 from timelapse.bot.date_parser import ExportDateParseError, parse_images_command_args
+from timelapse.configuration import get_settings
 from timelapse.services.camera_status import (
     format_camera_status,
     load_camera_status,
@@ -20,6 +21,7 @@ from timelapse.services.export_requests import (
     create_export_request,
     list_recent_export_jobs,
 )
+from timelapse.services.storage_pressure import get_storage_pressure_state
 
 
 class TelegramCommandSender(Protocol):
@@ -114,16 +116,22 @@ async def handle_images_command(
     except ExportDateParseError as error:
         return f"Invalid export request: {error.code}\nUsage: {error.usage}"
 
-    job = await create_export_request(
-        session=session,
-        request=ExportRequest(
-            requested_by_user_id=user.telegram_user_id,
-            destination_chat_id=user.telegram_chat_id,
-            start_at_utc=parsed.start_at_utc,
-            end_at_utc=parsed.end_at_utc,
-            camera_slug=parsed.camera_slug,
-        ),
-    )
+    settings = get_settings()
+    try:
+        job = await create_export_request(
+            session=session,
+            storage_pressure_state=get_storage_pressure_state(settings=settings),
+            request=ExportRequest(
+                requested_by_user_id=user.telegram_user_id,
+                destination_chat_id=user.telegram_chat_id,
+                start_at_utc=parsed.start_at_utc,
+                end_at_utc=parsed.end_at_utc,
+                camera_slug=parsed.camera_slug,
+            ),
+        )
+    except ExportRequestError as error:
+        return f"Export request rejected: {error.code}"
+
     return f"Export queued: {job.id} ({job.matching_image_count or 0} images)."
 
 

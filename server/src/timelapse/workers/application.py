@@ -13,6 +13,12 @@ from timelapse.services.export_worker import process_due_export_jobs_once
 from timelapse.services.health import evaluate_all_cameras_once
 from timelapse.services.heartbeat_aggregation import aggregate_due_heartbeats_once
 from timelapse.services.motion_worker import process_due_motion_analyses_once
+from timelapse.services.reconciliation import process_reconciliation_once
+from timelapse.services.retention import (
+    process_emergency_cleanup_once,
+    process_retention_once,
+)
+from timelapse.services.storage_pressure import get_storage_pressure_state
 from timelapse.services.telegram_client import TelegramClient
 
 LOGGER = logging.getLogger(__name__)
@@ -109,6 +115,43 @@ async def run_export_jobs_once() -> int:
         )
 
 
+async def run_retention_once() -> int:
+    settings = get_settings()
+    now = datetime.now(UTC)
+
+    async with session_scope() as session:
+        deleted_count = await process_retention_once(
+            session=session,
+            now=now,
+        )
+        emergency_deleted_count = await process_emergency_cleanup_once(
+            session=session,
+            now=now,
+            pressure_state=lambda: get_storage_pressure_state(settings=settings),
+        )
+        return deleted_count + emergency_deleted_count
+
+
+async def run_reconciliation_once() -> int:
+    settings = get_settings()
+
+    async with session_scope() as session:
+        result = await process_reconciliation_once(
+            session=session,
+            storage_root=settings.storage_root,
+            now=datetime.now(UTC),
+        )
+
+    return (
+        result.missing_files
+        + result.orphaned_files
+        + result.mismatched_files
+        + result.stale_staging_rows
+        + result.stale_temp_files
+        + result.stale_export_files
+    )
+
+
 async def run_worker() -> None:
     settings = get_settings()
     configure_logging("worker", settings.log_level)
@@ -157,6 +200,24 @@ async def run_worker() -> None:
                 operation_name="export_jobs",
             ),
             name="export-jobs-loop",
+        ),
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.retention_worker_interval_seconds,
+                operation=run_retention_once,
+                operation_name="retention",
+            ),
+            name="retention-loop",
+        ),
+        asyncio.create_task(
+            worker_loop(
+                stop_event=stop_event,
+                interval_seconds=settings.reconciliation_worker_interval_seconds,
+                operation=run_reconciliation_once,
+                operation_name="reconciliation",
+            ),
+            name="reconciliation-loop",
         ),
     ]
 

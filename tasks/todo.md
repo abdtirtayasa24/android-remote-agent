@@ -371,13 +371,13 @@
 **Description:** Delete expired images in batches while excluding active exports, pending/processing analysis, and non-stored rows.
 
 **Acceptance criteria:**
-- [ ] Expired eligible rows are marked deleting, files removed, and metadata removed/tombstoned consistently.
-- [ ] Active-export rows are never deleted.
-- [ ] Missing files are treated as successful deletion and audited.
-- [ ] Filesystem errors restore rows to stored for retry.
+- [x] Expired eligible rows are marked deleting, files removed, and metadata removed/tombstoned consistently.
+- [x] Active-export rows are never deleted.
+- [x] Missing files are treated as successful deletion and audited.
+- [x] Filesystem errors restore rows to stored for retry.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k retention` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k retention` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 13
 
@@ -395,12 +395,12 @@
 **Description:** Add storage free-space checks to reject uploads at the hard threshold and trigger emergency cleanup policy for disk pressure.
 
 **Acceptance criteria:**
-- [ ] Upload API returns HTTP 507 when free space is below the hard threshold.
-- [ ] New exports are rejected at severe disk pressure.
-- [ ] Emergency cleanup deletes oldest eligible scheduled images first.
+- [x] Upload API returns HTTP 507 when free space is below the hard threshold.
+- [x] New exports are rejected at severe disk pressure.
+- [x] Emergency cleanup deletes oldest eligible scheduled images first.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k disk_pressure` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k disk_pressure` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 16
 
@@ -420,13 +420,13 @@
 **Description:** Detect missing files, orphaned files, incorrect sizes, checksum mismatches, stale staging rows, stale temp files, and old export files.
 
 **Acceptance criteria:**
-- [ ] Missing database files are marked/audited.
-- [ ] Orphaned files move to quarantine before deletion.
-- [ ] Checksum and file-size mismatches are detected.
-- [ ] Stale staging/temp/export files are handled according to spec.
+- [x] Missing database files are marked/audited.
+- [x] Orphaned files move to quarantine before deletion.
+- [x] Checksum and file-size mismatches are detected.
+- [x] Stale staging/temp/export files are handled according to spec.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k reconciliation` when `TEST_DATABASE_URL` is configured
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k reconciliation` with `TEST_DATABASE_URL` configured
 
 **Dependencies:** Task 16
 

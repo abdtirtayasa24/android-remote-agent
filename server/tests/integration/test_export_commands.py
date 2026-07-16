@@ -18,6 +18,7 @@ from timelapse.bot.commands import (
 from timelapse.database import get_session_factory, session_scope
 from timelapse.models.entities import Camera, ExportJob, ExportPart, Image
 from timelapse.models.enums import CaptureSource, ImageStorageState, JobStatus
+from timelapse.services.storage_pressure import StoragePressureState
 
 NOW = datetime(2026, 7, 16, 12, 0, tzinfo=UTC)
 ADMIN = AuthorizedTelegramUser(
@@ -86,6 +87,31 @@ async def test_images_command_creates_export_job(create_camera, tmp_path: Path) 
 
     assert job.requested_by_user_id == ADMIN.telegram_user_id
     assert job.destination_chat_id == ADMIN.telegram_chat_id
+
+
+async def test_images_command_reports_storage_pressure_without_creating_export(
+    create_camera,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await create_camera(slug="front-door")
+    monkeypatch.setattr(
+        "timelapse.bot.commands.get_storage_pressure_state",
+        lambda *, settings: StoragePressureState.SEVERE,
+    )
+
+    async with session_scope() as session:
+        text = await handle_images_command(
+            session=session,
+            args=["2026-07-16", "23:30", "2026-07-17", "00:30", "front-door"],
+            user=ADMIN,
+        )
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        job = await session.scalar(select(ExportJob))
+
+    assert text == "Export request rejected: storage_pressure_severe"
+    assert job is None
 
 
 async def test_exports_command_lists_only_requesting_user_jobs(create_camera) -> None:
