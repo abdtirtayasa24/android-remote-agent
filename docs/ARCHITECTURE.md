@@ -282,11 +282,19 @@ Image storage state values are:
 
 ### Scheduled capture and upload
 
-```bash
-android: schedule -> capture -> validate -> compress -> queue
-sqlite: pending -> claim_due -> upload_https -> wait_for_server
-server: authenticate -> validate_jpeg -> postgres:image -> filesystem:jpg
-server: stored|already_stored -> android:delete_local_file
+```mermaid
+flowchart LR
+    Schedule[Schedule capture] --> Capture[Capture image]
+    Capture --> Validate[Validate raw file]
+    Validate --> Compress[Normalize and compress JPEG]
+    Compress --> Queue[(SQLite pending queue)]
+    Queue --> Claim[Claim due upload]
+    Claim --> Upload[Upload over HTTPS]
+    Upload --> Auth[Authenticate and validate upload]
+    Auth --> Store[(PostgreSQL image row)]
+    Store --> File[Install JPEG on filesystem]
+    File --> Confirm[stored or already_stored]
+    Confirm --> Delete[Delete local pending file]
 ```
 
 1. Android schedules captures every configured interval.
@@ -298,11 +306,17 @@ server: stored|already_stored -> android:delete_local_file
 
 ### Health and alerts
 
-```bash
-android: heartbeat -> api -> postgres
-worker: read_camera_state -> classify_health -> alert_states
-telegram: offline|degraded|recovery -> authorized_chat
-worker: daily_summary -> expire_detailed_heartbeats
+```mermaid
+flowchart LR
+    Heartbeat[Heartbeat] --> API[Heartbeat API]
+    API --> DB[(PostgreSQL heartbeat row)]
+    DB --> State[Update camera last_seen fields]
+    State --> Worker[Health worker]
+    Worker --> Classify[Classify health]
+    Classify --> AlertStates[(alert_states)]
+    AlertStates --> Telegram[Telegram offline/degraded/recovery alert]
+    Worker --> Summary[Daily summary]
+    Summary --> Expiry[Expire detailed heartbeats]
 ```
 
 1. Android sends heartbeats every configured heartbeat interval.
@@ -314,11 +328,19 @@ worker: daily_summary -> expire_detailed_heartbeats
 
 ### Motion detection
 
-```bash
-server: image -> motion_analysis -> frame_diff_v1
-worker: current_image + previous_image -> metrics -> motion_yes_no
-worker: motion_yes -> five_minute_event -> first_image_alert
-telegram: send_photo_once -> retry_if_pending
+```mermaid
+flowchart LR
+    Image[Stored scheduled image] --> Analysis[(motion_analyses)]
+    Analysis --> Claim[Worker claims analysis]
+    Claim --> Pair[Load current and previous image]
+    Pair --> FrameDiff[frame_diff_v1]
+    FrameDiff --> Metrics[Persist metrics]
+    Metrics --> Decision{Motion?}
+    Decision -->|No| Complete[Mark no motion]
+    Decision -->|Yes| Event[Five-minute motion event]
+    Event --> First[First image only]
+    First --> Send[Send Telegram photo]
+    Send --> Retry[Retry if pending]
 ```
 
 1. Each accepted scheduled image creates a pending motion-analysis row.
@@ -330,11 +352,19 @@ telegram: send_photo_once -> retry_if_pending
 
 ### Telegram retrieval and exports
 
-```bash
-telegram_command -> authorize -> parse -> validate_range
-/images: jakarta_time -> utc_range -> snapshot_image_ids
-export_worker: snapshot -> zip_part + manifest -> telegram_document
-export_worker: sent -> delete_local_part -> complete_job
+```mermaid
+flowchart LR
+    Command[Telegram command] --> Authorize[Authorize Telegram user]
+    Authorize --> Parse[Parse command]
+    Parse --> ValidateRange[Validate range and camera]
+    ValidateRange --> Jakarta[Asia/Jakarta input]
+    Jakarta --> UTC[Convert to UTC range]
+    UTC --> Snapshot[(Snapshot image IDs)]
+    Snapshot --> Zip[Build ZIP part and manifest]
+    Zip --> Document[Send Telegram document]
+    Document --> Sent[Mark part sent]
+    Sent --> Delete[Delete local part]
+    Delete --> Complete[Complete export job]
 ```
 
 1. Telegram updates arrive through long polling.
@@ -350,11 +380,22 @@ export_worker: sent -> delete_local_part -> complete_job
 
 ### Retention, disk protection, and reconciliation
 
-```bash
-retention -> claim_expired -> skip_active_exports -> delete_file -> tombstone_row
-storage_pressure: normal|severe|hard -> reject_exports_or_uploads
-emergency_cleanup -> oldest_scheduled_images -> stop_when_safe
-reconciliation -> missing|orphan|mismatch|stale -> mark|quarantine|delete|audit
+```mermaid
+flowchart LR
+    Retention[Retention worker] --> ClaimExpired[Claim expired images]
+    ClaimExpired --> Protect[Skip active exports and analyses]
+    Protect --> DeleteFile[Delete image file]
+    DeleteFile --> Tombstone[Tombstone image row]
+
+    Pressure[Storage pressure] --> PressureState{normal / severe / hard}
+    PressureState -->|severe| RejectExports[Reject new exports]
+    PressureState -->|hard| RejectUploads[Reject uploads with HTTP 507]
+    PressureState -->|hard| Emergency[Emergency cleanup]
+    Emergency --> Oldest[Oldest eligible scheduled images]
+    Oldest --> Stop[Stop when safe or no progress]
+
+    Reconcile[Reconciliation worker] --> Problems{missing / orphan / mismatch / stale}
+    Problems --> Repair[Mark, quarantine, delete, or audit]
 ```
 
 1. Retention computes expiry from capture time and per-camera retention days.
