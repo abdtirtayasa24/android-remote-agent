@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
+
+from timelapse.services.time_formatting import format_jakarta_datetime
 
 if TYPE_CHECKING:
     from timelapse.services.health import HealthEvaluation
@@ -39,7 +41,7 @@ def format_health_alert_message(
             f"Camera: {camera_slug}",
             f"State: {evaluation.state.value}",
             f"Conditions: {conditions}",
-            f"Time: {_format_utc(evaluation.evaluated_at)} UTC",
+            f"Time: {format_jakarta_datetime(evaluation.evaluated_at)}",
         )
     )
 
@@ -61,7 +63,7 @@ def format_health_recovery_message(
             f"Camera recovered — {camera_display_name}",
             f"Camera: {camera_slug}",
             f"Resolved condition: {condition}",
-            f"Time: {_format_utc(resolved_at)} UTC",
+            f"Time: {format_jakarta_datetime(resolved_at)}",
         )
     )
 
@@ -76,10 +78,6 @@ def format_motion_alert_caption(
         (
             f"Motion detected — {camera_display_name}",
             f"Camera: {camera_slug}",
-            f"Time: {_format_utc(detected_at)} UTC",
+            f"Time: {format_jakarta_datetime(detected_at)}",
         )
     )
-
-
-def _format_utc(value: datetime) -> str:
-    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")

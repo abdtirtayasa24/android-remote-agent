@@ -126,6 +126,9 @@ async def test_status_returns_camera_health_without_storage_paths(create_camera)
 
     assert "Front Door" in text
     assert "online" in text
+    assert "Last capture: 2026-07-16 19:00:00 Asia/Jakarta" in text
+    assert "Last upload: 2026-07-16 19:00:00 Asia/Jakarta" in text
+    assert "UTC" not in text
     assert "/srv/" not in text
 
 
@@ -160,4 +163,5 @@ async def test_latest_sends_latest_stored_image(create_camera, tmp_path: Path) -
 
     assert older.id is not None
     assert sender.photos == [(456, Path(latest.storage_path), sender.photos[0][2])]
+    assert sender.photos[0][2] == "Latest image captured at 2026-07-16 19:00:00 Asia/Jakarta"
     assert "/srv/" not in (sender.photos[0][2] or "")

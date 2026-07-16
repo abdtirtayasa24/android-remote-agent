@@ -27,6 +27,8 @@ def test_health_alert_message_is_english_and_contains_no_storage_paths() -> None
     assert "Camera health warning" in message
     assert "Front Door" in message
     assert "battery low" in message.lower()
+    assert "Time: 2026-07-16 19:00:00 Asia/Jakarta" in message
+    assert "UTC" not in message
     assert "/srv/" not in message
 
 
@@ -41,6 +43,8 @@ def test_health_recovery_message_is_english() -> None:
     assert "Camera recovered" in message
     assert "Front Door" in message
     assert "offline" in message
+    assert "Time: 2026-07-16 19:00:00 Asia/Jakarta" in message
+    assert "UTC" not in message
 
 
 def test_motion_alert_caption_is_english_and_contains_no_storage_paths() -> None:
@@ -52,4 +56,6 @@ def test_motion_alert_caption_is_english_and_contains_no_storage_paths() -> None
 
     assert "Motion detected" in message
     assert "Front Door" in message
+    assert "Time: 2026-07-16 19:00:00 Asia/Jakarta" in message
+    assert "UTC" not in message
     assert "/srv/" not in message

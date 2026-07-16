@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 JAKARTA = ZoneInfo("Asia/Jakarta")
-IMAGES_USAGE = "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera]"
+IMAGES_USAGE = "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera] (Asia/Jakarta)"
 MAX_EXPORT_RANGE = timedelta(hours=24)
 
 

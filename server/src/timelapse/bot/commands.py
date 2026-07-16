@@ -22,6 +22,7 @@ from timelapse.services.export_requests import (
     list_recent_export_jobs,
 )
 from timelapse.services.storage_pressure import get_storage_pressure_state
+from timelapse.services.time_formatting import format_jakarta_datetime
 
 
 class TelegramCommandSender(Protocol):
@@ -55,7 +56,7 @@ HELP_TEXT = "\n".join(
         "/help - Show this help message",
         "/status [camera] - Show camera health summary",
         "/latest [camera] - Send latest stored image",
-        "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera] - Request ZIP export",
+        "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera] - Request ZIP export (Asia/Jakarta)",
         "/exports - List your recent export jobs",
         "/cancel <job-id> - Cancel a pending export (administrator only)",
     )
@@ -96,7 +97,7 @@ async def handle_latest_command(
     if image is None:
         return "No stored images found."
 
-    caption = f"Latest image captured at {image.captured_at_utc:%Y-%m-%d %H:%M:%S} UTC"
+    caption = f"Latest image captured at {format_jakarta_datetime(image.captured_at_utc)}"
     await sender.send_photo(
         chat_id=chat_id,
         photo_path=Path(image.storage_path),

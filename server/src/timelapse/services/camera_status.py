@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from timelapse.models.entities import Camera, CameraHeartbeat, Image, MotionEvent
 from timelapse.models.enums import ImageStorageState
+from timelapse.services.time_formatting import format_jakarta_datetime
 
 
 @dataclass(frozen=True)
@@ -104,22 +105,22 @@ def _format_one_camera_status(summary: CameraStatusSummary) -> str:
         f"Camera status — {summary.display_name}",
         f"Camera: {summary.slug}",
         f"Health: {summary.health_state}",
-        f"Last capture: {_format_optional_utc(summary.last_capture_at)}",
-        f"Last upload: {_format_optional_utc(summary.last_upload_at)}",
-        f"Last heartbeat: {_format_optional_utc(summary.last_heartbeat_at)}",
+        f"Last capture: {_format_optional_jakarta(summary.last_capture_at)}",
+        f"Last upload: {_format_optional_jakarta(summary.last_upload_at)}",
+        f"Last heartbeat: {_format_optional_jakarta(summary.last_heartbeat_at)}",
         f"Queue: {_format_optional_int(summary.pending_queue_count)} pending",
         f"Battery: {_format_optional_int(summary.battery_percent)}%",
         f"Phone storage: {_format_optional_bytes(summary.available_storage_bytes)}",
-        f"Latest motion: {_format_optional_utc(summary.latest_motion_at)}",
+        f"Latest motion: {_format_optional_jakarta(summary.latest_motion_at)}",
     ]
     return "\n".join(lines)
 
 
-def _format_optional_utc(value: datetime | None) -> str:
+def _format_optional_jakarta(value: datetime | None) -> str:
     if value is None:
         return "unknown"
 
-    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return format_jakarta_datetime(value)
 
 
 def _format_optional_int(value: int | None) -> str:

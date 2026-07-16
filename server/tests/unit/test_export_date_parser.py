@@ -29,6 +29,7 @@ def test_over_24_hour_range_is_rejected_with_usage() -> None:
 
     assert error.value.code == "range_too_large"
     assert "/images YYYY-MM-DD HH:mm YYYY-MM-DD HH:mm [camera]" in error.value.usage
+    assert "Asia/Jakarta" in error.value.usage
 
 
 def test_invalid_format_is_rejected_with_usage() -> None:
