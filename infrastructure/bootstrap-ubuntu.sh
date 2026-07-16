@@ -70,8 +70,8 @@ install -d \
     -o root \
     -g "$APP_GROUP" \
     -m 0750 \
-    /home/ubuntu/android-remote \
-    /home/ubuntu/android-remote/releases
+    /opt/android-remote \
+    /opt/android-remote/releases
 
 install -d \
     -o root \

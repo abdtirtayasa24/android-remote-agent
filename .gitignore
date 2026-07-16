@@ -50,6 +50,7 @@ server/quarantine/
 server/tmp/
 
 srv/timelapse/
+/releases/
 
 *.zip
 *.jpg
