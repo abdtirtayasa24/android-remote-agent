@@ -71,6 +71,7 @@ srv/timelapse/
 **/milestone-1/
 **/test-results/
 **/reports/
+docs/SPEC*.md
 
 .idea/
 .vscode/
