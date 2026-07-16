@@ -29,12 +29,30 @@ class CapturedImage:
 def capture_and_prepare(
     config: AgentConfig,
 ) -> CapturedImage:
+    return _capture_and_prepare_in_directory(
+        config,
+        output_directory=config.pending_directory,
+    )
+
+
+def capture_validation_image(
+    config: AgentConfig,
+) -> CapturedImage:
+    return _capture_and_prepare_in_directory(
+        config,
+        output_directory=config.validation_captures_directory,
+    )
+
+
+def _capture_and_prepare_in_directory(
+    config: AgentConfig,
+    *,
+    output_directory: Path,
+) -> CapturedImage:
     captured_at = datetime.now(UTC)
     capture_id = str(uuid4())
 
-    date_directory = (
-        config.pending_directory / config.camera_slug / captured_at.strftime("%Y-%m-%d")
-    )
+    date_directory = output_directory / config.camera_slug / captured_at.strftime("%Y-%m-%d")
     date_directory.mkdir(
         parents=True,
         exist_ok=True,

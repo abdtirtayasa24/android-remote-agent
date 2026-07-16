@@ -53,6 +53,10 @@ class AgentConfig:
         return self.root_directory / "logs"
 
     @property
+    def validation_captures_directory(self) -> Path:
+        return self.root_directory / "validation-captures"
+
+    @property
     def lock_file_path(self) -> Path:
         return self.root_directory / "camera-agent.lock"
 
@@ -70,6 +74,7 @@ class AgentConfig:
             self.pending_directory,
             self.temporary_directory,
             self.logs_directory,
+            self.validation_captures_directory,
         ):
             directory.mkdir(
                 parents=True,

@@ -7,12 +7,14 @@ import logging
 import os
 import signal
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import IO
 
 from camera_agent.capture import (
     CaptureError,
     capture_and_prepare,
+    capture_validation_image,
 )
 from camera_agent.cleanup import cleanup_loop
 from camera_agent.configuration import (
@@ -239,15 +241,77 @@ def configure_logging() -> None:
     )
 
 
-def parse_arguments() -> argparse.Namespace:
+def run_self_test_captures(
+    config: AgentConfig,
+    *,
+    count: int,
+    fail_fast: bool,
+) -> int:
+    config.prepare_directories()
+    failures = 0
+
+    for capture_number in range(1, count + 1):
+        try:
+            captured = capture_validation_image(config)
+            logger.info(
+                "Self-test capture saved: capture=%s path=%s bytes=%s",
+                captured.capture_id,
+                captured.file_path,
+                captured.file_size_bytes,
+            )
+        except CaptureError as exc:
+            failures += 1
+            logger.error(
+                "Self-test capture %s/%s failed: %s",
+                capture_number,
+                count,
+                exc,
+            )
+            if fail_fast:
+                break
+
+    return failures
+
+
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=("Android time-lapse camera agent"))
     parser.add_argument(
         "--config",
         type=Path,
         default=Path("~/timelapse/config.json").expanduser(),
     )
+    parser.add_argument(
+        "--camera-id",
+        type=int,
+        help="Override the configured Termux camera ID for a self-test run.",
+    )
+    capture_mode = parser.add_mutually_exclusive_group()
+    capture_mode.add_argument(
+        "--once",
+        action="store_true",
+        help="Capture one validation image and exit.",
+    )
+    capture_mode.add_argument(
+        "--count",
+        type=int,
+        help="Capture this many validation images and exit.",
+    )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop a bounded self-test run after the first capture failure.",
+    )
 
-    return parser.parse_args()
+    arguments = parser.parse_args(argv)
+
+    if arguments.camera_id is not None and arguments.camera_id < 0:
+        parser.error("--camera-id must be zero or greater")
+    if arguments.count is not None and arguments.count < 1:
+        parser.error("--count must be at least 1")
+    if arguments.fail_fast and not (arguments.once or arguments.count is not None):
+        parser.error("--fail-fast requires --once or --count")
+
+    return arguments
 
 
 def main() -> None:
@@ -256,10 +320,28 @@ def main() -> None:
 
     try:
         config = load_config(arguments.config)
+        if arguments.camera_id is not None:
+            config = replace(
+                config,
+                camera_id=arguments.camera_id,
+            )
+
+        if arguments.once or arguments.count is not None:
+            count = 1 if arguments.once else arguments.count
+            failures = run_self_test_captures(
+                config,
+                count=count,
+                fail_fast=arguments.fail_fast,
+            )
+            if failures:
+                raise RuntimeError(f"{failures} self-test capture(s) failed")
+            return
+
         asyncio.run(run_agent(config))
     except (
         ConfigurationError,
         RuntimeError,
+        CaptureError,
     ) as exc:
         logger.error("%s", exc)
         raise SystemExit(1) from exc

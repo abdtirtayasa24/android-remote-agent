@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
-from camera_agent.configuration import AgentConfig, ConfigurationError
+from camera_agent.configuration import ConfigurationError, load_config
 
 _FILENAME_PATTERN = re.compile(r"^(?P<timestamp>\d{8}T\d{6}Z)_[0-9a-fA-F-]{36}\.jpg$")
 
@@ -89,13 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        config = AgentConfig.from_file(args.config)
+        config = load_config(args.config)
         since_utc = parse_utc(args.since_utc) if args.since_utc else None
     except (ConfigurationError, ValueError) as exc:
         print(f"validation configuration error: {exc}", file=sys.stderr)
         return 2
 
-    directory = args.directory or (config.output_directory / config.camera_slug)
+    directory = args.directory or (config.validation_captures_directory / config.camera_slug)
     candidates = sorted(directory.rglob("*.jpg")) if directory.exists() else []
 
     valid: list[dict[str, object]] = []
