@@ -86,10 +86,10 @@ Inside Termux:
 ```bash
 cd camera-agent
 ./scripts/install-termux.sh
-cp config.example.json config.json
-chmod 600 config.json
-./scripts/camera-self-test.sh
-PYTHONPATH=src python -m camera_agent.validation
+# Edit $HOME/timelapse/config.json, then inspect camera IDs:
+$HOME/timelapse/bin/camera-self-test.sh info
+# Test one candidate camera ID:
+$HOME/timelapse/bin/camera-self-test.sh once 0
 ```
 
 Install boot integration when the phone setup is ready:

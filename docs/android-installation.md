@@ -46,7 +46,13 @@ $HOME/timelapse/
 └── validation-captures/
 ```
 
-It also creates:
+Install boot integration when the runtime layout is ready:
+
+```sh
+./scripts/install-boot-script.sh
+```
+
+That creates:
 
 ```text
 $HOME/.termux/boot/10-start-camera-agent

@@ -1,12 +1,32 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
 
+SCRIPT_DIRECTORY="$(
+    CDPATH= cd -- "$(dirname -- "$0")"
+    pwd
+)"
+
 TIMELAPSE_HOME="${TIMELAPSE_HOME:-$HOME/timelapse}"
 CONFIG_PATH="$TIMELAPSE_HOME/config.json"
 EVIDENCE_DIRECTORY="$TIMELAPSE_HOME/logs/milestone-1"
 PID_PATH="$TIMELAPSE_HOME/run/camera-agent.pid"
+INSTALLED_APP_DIRECTORY="$TIMELAPSE_HOME/app"
+SOURCE_APP_DIRECTORY="$SCRIPT_DIRECTORY/../src"
 
-export PYTHONPATH="$TIMELAPSE_HOME/app${PYTHONPATH:+:$PYTHONPATH}"
+if [ -d "$INSTALLED_APP_DIRECTORY/camera_agent" ]; then
+    APP_DIRECTORY="$INSTALLED_APP_DIRECTORY"
+elif [ -d "$SOURCE_APP_DIRECTORY/camera_agent" ]; then
+    APP_DIRECTORY="$SOURCE_APP_DIRECTORY"
+else
+    echo "Camera agent package does not exist." >&2
+    echo "Expected one of:" >&2
+    echo "  $INSTALLED_APP_DIRECTORY/camera_agent" >&2
+    echo "  $SOURCE_APP_DIRECTORY/camera_agent" >&2
+    echo "Run: cd camera-agent && ./scripts/install-termux.sh" >&2
+    exit 1
+fi
+
+export PYTHONPATH="$APP_DIRECTORY${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "$EVIDENCE_DIRECTORY"
 
 usage() {

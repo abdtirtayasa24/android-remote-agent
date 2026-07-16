@@ -24,7 +24,7 @@ termux-wake-lock
 
 mkdir -p "\$HOME/timelapse/logs"
 
-exec "${CAMERA_AGENT_DIRECTORY}/scripts/start-agent.sh" \
+exec "\$HOME/timelapse/bin/start-agent.sh" \
     >> "\$HOME/timelapse/logs/camera-agent.log" \
     2>&1
 EOF
