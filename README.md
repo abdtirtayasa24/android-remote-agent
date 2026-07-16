@@ -129,6 +129,25 @@ export TEST_DATABASE_MIGRATION_URL="$TEST_DATABASE_URL"
 cd server && ../.venv/bin/pytest tests/integration -q
 ```
 
+## Dashboard Frontend Build Strategy
+
+The Telegram Mini App dashboard is allowed to use React, TypeScript, and Tailwind under `dashboard/`. The dashboard is compiled to static assets and served by Nginx; it does not add a Node.js runtime service.
+
+Before generating or updating `dashboard/package-lock.json`, ensure npm uses the public npm registry:
+
+```bash
+npm config get registry
+npm config set registry https://registry.npmjs.org/
+```
+
+The dashboard package should commit `dashboard/.npmrc` with:
+
+```ini
+registry=https://registry.npmjs.org/
+```
+
+Production bootstrap installs Node.js 22 LTS and npm for dashboard builds. Deployment runs `npm ci` and `npm run build` when `dashboard/package.json` is present, then publishes `dashboard/dist` to `/var/www/android-remote/dashboard` for Nginx to serve at `/dashboard/`.
+
 ## Camera Credentials
 
 After migrations and environment setup:

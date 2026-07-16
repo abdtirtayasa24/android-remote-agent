@@ -31,7 +31,7 @@ The project is an Android still-image time-lapse security camera system. An Andr
 - A native Android application.
 - Remote control of Android system settings.
 - Guaranteed detection of motion that happens entirely between scheduled captures.
-- A web dashboard.
+- A standalone public web dashboard outside the Telegram Mini App surface.
 
 ## Reference Baselines
 
@@ -70,11 +70,13 @@ The design borrows surveillance concepts from motionEye and Frigate, but deliber
 | Migrations | Alembic |
 | Telegram | python-telegram-bot long polling |
 | Image processing | OpenCV headless and Pillow |
+| Dashboard frontend | React, TypeScript, Tailwind, Vite static build under `dashboard/` |
+| Dashboard build runtime | Node.js 22 LTS and npm from NodeSource during deployment only |
 | Testing | Pytest and pytest-asyncio |
 | Linting/formatting | Ruff |
-| Packaging | Plain `pip`, `server/pyproject.toml`, `camera-agent/requirements.txt` |
+| Packaging | Plain `pip`, `server/pyproject.toml`, `camera-agent/requirements.txt`; npm with committed `dashboard/package-lock.json` for dashboard only |
 
-Production deployment uses host-managed systemd services. Releases are copied under `/opt/android-remote/releases`, `/opt/android-remote/current` points at the active release, and `deploy-systemd.sh` installs the server package into a shared virtual environment before restarting services. No Poetry, uv, Pipenv, PDM, or dependency lockfile is required.
+Production deployment uses host-managed systemd services. Releases are copied under `/opt/android-remote/releases`, `/opt/android-remote/current` points at the active release, and `deploy-systemd.sh` installs the server package into a shared virtual environment before restarting services. The dashboard, when present, is built with `npm ci && npm run build` before the release is activated, and only static assets from `dashboard/dist` are published to `/var/www/android-remote/dashboard` for Nginx to serve at `/dashboard/`. No Poetry, uv, Pipenv, or PDM is required.
 
 ## Architecture Overview
 

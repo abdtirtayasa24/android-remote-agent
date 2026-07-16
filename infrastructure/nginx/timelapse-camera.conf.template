@@ -33,6 +33,19 @@ server {
     client_max_body_size 5m;
     client_body_timeout 30s;
 
+    location = /dashboard {
+        return 301 /dashboard/;
+    }
+
+    location ^~ /dashboard/ {
+        root /var/www/android-remote;
+        try_files $uri $uri/ /dashboard/index.html;
+
+        limit_except GET {
+            deny all;
+        }
+    }
+
     location = /health/live {
         limit_except GET {
             deny all;

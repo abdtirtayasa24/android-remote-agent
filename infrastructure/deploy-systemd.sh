@@ -29,6 +29,7 @@ NGINX_AVAILABLE="/etc/nginx/sites-available/timelapse-camera.conf"
 NGINX_ENABLED="/etc/nginx/sites-enabled/timelapse-camera.conf"
 
 ACME_WEBROOT="/var/www/certbot"
+DASHBOARD_WEB_ROOT="/var/www/android-remote/dashboard"
 
 if [[ "${EUID}" -ne 0 ]]; then
     echo "Run this deployment script as root." >&2
@@ -118,6 +119,12 @@ install -d \
     "$CONFIG_DIRECTORY"
 
 install -d \
+    -o root \
+    -g www-data \
+    -m 0755 \
+    "$DASHBOARD_WEB_ROOT"
+
+install -d \
     -o "$APP_USER" \
     -g "$APP_GROUP" \
     -m 0750 \
@@ -150,6 +157,14 @@ rsync \
     --delete \
     "${REPOSITORY_DIRECTORY}/server/" \
     "${release_directory}/server/"
+
+if [[ -d "${REPOSITORY_DIRECTORY}/dashboard" ]]; then
+    rsync \
+        --archive \
+        --delete \
+        "${REPOSITORY_DIRECTORY}/dashboard/" \
+        "${release_directory}/dashboard/"
+fi
 
 chown -R root:"$APP_GROUP" "$release_directory"
 chmod -R u=rwX,g=rX,o= "$release_directory"
@@ -184,6 +199,25 @@ echo "Installing server package and dependencies..."
 
 chown root:"$APP_GROUP" "${release_directory}/pip-freeze.txt"
 chmod 0640 "${release_directory}/pip-freeze.txt"
+
+if [[ -f "${release_directory}/dashboard/package.json" ]]; then
+    echo "Building dashboard static assets..."
+
+    (
+        cd "${release_directory}/dashboard"
+
+        npm_registry="$(npm config get registry)"
+
+        if [[ "$npm_registry" != "https://registry.npmjs.org/" ]]; then
+            echo "Dashboard npm registry must be https://registry.npmjs.org/." >&2
+            echo "Current registry: ${npm_registry}" >&2
+            exit 1
+        fi
+
+        npm ci
+        npm run build
+    )
+fi
 
 previous_release=""
 
@@ -267,6 +301,20 @@ if [[ "$migration_status" -ne 0 ]]; then
     fi
 
     exit "$migration_status"
+fi
+
+if [[ -d "${release_directory}/dashboard/dist" ]]; then
+    echo "Publishing dashboard static assets..."
+
+    rsync \
+        --archive \
+        --delete \
+        "${release_directory}/dashboard/dist/" \
+        "$DASHBOARD_WEB_ROOT/"
+
+    chown -R root:www-data "$DASHBOARD_WEB_ROOT"
+    find "$DASHBOARD_WEB_ROOT" -type d -exec chmod 0755 {} \;
+    find "$DASHBOARD_WEB_ROOT" -type f -exec chmod 0644 {} \;
 fi
 
 ln -sfnT "$release_directory" "$CURRENT_LINK"

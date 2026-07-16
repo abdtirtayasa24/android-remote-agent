@@ -22,7 +22,7 @@ From the repository root on the VPS:
 sudo SSH_PORT=22 ./infrastructure/bootstrap-ubuntu.sh
 ```
 
-This installs Python 3.12, Nginx, Certbot, PostgreSQL client tools, OpenCV runtime packages, creates `/srv/timelapse`, and enables Nginx.
+This installs Python 3.12, Nginx, Certbot, PostgreSQL client tools, OpenCV runtime packages, `ffmpeg`, Node.js 22 LTS/npm for dashboard builds, creates `/srv/timelapse`, prepares `/var/www/android-remote/dashboard`, and enables Nginx.
 
 If you want the bootstrap script to enable UFW after adding SSH/HTTP/HTTPS rules:
 
@@ -67,12 +67,21 @@ Run:
 sudo ./infrastructure/deploy-systemd.sh
 ```
 
-The deployment script validates Neon URL roles, installs the server package into `/opt/android-remote/.venv`, runs Alembic migrations, installs systemd units, configures Nginx, obtains/uses Let's Encrypt certificates, and starts:
+The deployment script validates Neon URL roles, installs the server package into `/opt/android-remote/.venv`, builds the React/Tailwind dashboard when `dashboard/package.json` is present, publishes dashboard static assets to `/var/www/android-remote/dashboard`, runs Alembic migrations, installs systemd units, configures Nginx, obtains/uses Let's Encrypt certificates, and starts:
 
 - `timelapse-api.service`
 - `timelapse-worker.service`
 - `timelapse-bot.service`
 - `timelapse-camera.target`
+
+Dashboard builds use npm with a committed lockfile. Before generating or updating `dashboard/package-lock.json`, confirm the npm registry points to the public registry:
+
+```sh
+npm config get registry
+npm config set registry https://registry.npmjs.org/
+```
+
+The dashboard package should include `dashboard/.npmrc` containing `registry=https://registry.npmjs.org/`. Deployment runs `npm ci` and `npm run build` from the release copy, then Nginx serves the compiled Mini App at `/dashboard/`.
 
 ## 4. Verify foundation
 

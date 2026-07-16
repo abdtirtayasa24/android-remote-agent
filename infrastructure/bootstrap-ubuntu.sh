@@ -41,6 +41,7 @@ apt-get install -y \
     ca-certificates \
     certbot \
     curl \
+    ffmpeg \
     gettext-base \
     libgl1 \
     libglib2.0-0 \
@@ -52,6 +53,18 @@ apt-get install -y \
     python3-pip \
     rsync \
     ufw
+
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+
+node_major_version="$(node --version | sed -E 's/^v([0-9]+).*/\1/')"
+
+if [[ ! "$node_major_version" =~ ^[0-9]+$ ]] || ((node_major_version < 22)); then
+    echo "Node.js 22 LTS or newer is required for dashboard builds." >&2
+    exit 1
+fi
+
+npm --version >/dev/null
 
 if ! getent group "$APP_GROUP" >/dev/null; then
     groupadd --system "$APP_GROUP"
@@ -94,6 +107,13 @@ install -d \
     -g root \
     -m 0755 \
     /var/www/certbot
+
+install -d \
+    -o root \
+    -g www-data \
+    -m 0755 \
+    /var/www/android-remote \
+    /var/www/android-remote/dashboard
 
 systemctl enable --now nginx
 
