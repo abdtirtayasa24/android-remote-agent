@@ -1,6 +1,7 @@
 from timelapse.models import Base
 
 EXPECTED_TABLES = {
+    "alert_states",
     "audit_events",
     "camera_credentials",
     "camera_heartbeats",
@@ -8,6 +9,7 @@ EXPECTED_TABLES = {
     "export_job_images",
     "export_jobs",
     "export_parts",
+    "heartbeat_daily_summaries",
     "images",
     "motion_analyses",
     "motion_event_images",
@@ -31,4 +33,6 @@ def test_required_partial_indexes_are_registered() -> None:
         "idx_images_retention",
         "idx_motion_analyses_pending",
         "idx_camera_heartbeats_camera_received",
+        "idx_alert_states_active",
+        "idx_heartbeat_daily_summaries_camera_date",
     }.issubset(index_names)

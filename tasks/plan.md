@@ -55,17 +55,17 @@ Quality gate cleanup
 - [x] Shared Ruff check and format check pass
 
 ### Phase 1: Milestone 5 — Camera Health
-- [ ] Task 2: Add health-state classification service
-- [ ] Task 3: Persist health state from the worker loop
-- [ ] Task 4: Add Telegram outbound client and alert formatting
-- [ ] Task 5: Implement health alert deduplication and audit trail
-- [ ] Task 6: Add heartbeat aggregation and expiry
+- [x] Task 2: Add health-state classification service
+- [x] Task 3: Persist health state from the worker loop
+- [x] Task 4: Add Telegram outbound client and alert formatting
+- [x] Task 5: Implement health alert deduplication and audit trail
+- [x] Task 6: Add heartbeat aggregation and expiry
 
 ### Checkpoint: Milestone 5
-- [ ] Offline is detected within 16 minutes in tests
-- [ ] Recovery is emitted once in tests
-- [ ] Degraded threshold transitions are tested
-- [ ] Worker can run continuously without crashing when database is available
+- [x] Offline is detected within 16 minutes in tests
+- [x] Recovery is emitted once in tests
+- [x] Degraded threshold transitions are tested
+- [ ] Worker can run continuously without crashing when database is available (pending local `TEST_DATABASE_URL` verification)
 
 ### Phase 2: Milestone 6 — Motion Detection
 - [ ] Task 7: Implement `frame-diff-v1` as a pure motion detector

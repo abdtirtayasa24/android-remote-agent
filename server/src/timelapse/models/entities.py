@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -362,6 +362,94 @@ class CameraHeartbeat(Base):
     last_error_code: Mapped[str | None] = mapped_column(sa.Text)
 
 
+class HeartbeatDailySummary(Base):
+    __tablename__ = "heartbeat_daily_summaries"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "camera_id",
+            "summary_date_utc",
+            name="uq_heartbeat_daily_summaries_camera_date",
+        ),
+    )
+
+    id: Mapped[UUID] = uuid_primary_key()
+    camera_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("cameras.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    summary_date_utc: Mapped[date] = mapped_column(sa.Date, nullable=False)
+    heartbeat_count: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        server_default="0",
+    )
+    minimum_battery_percent: Mapped[int | None] = mapped_column(sa.SmallInteger)
+    maximum_temperature_c: Mapped[Decimal | None] = mapped_column(sa.Numeric(5, 2))
+    maximum_pending_image_count: Mapped[int | None] = mapped_column(sa.Integer)
+    maximum_pending_image_bytes: Mapped[int | None] = mapped_column(sa.BigInteger)
+    offline_seconds: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        server_default="0",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+
+
+class AlertState(Base):
+    __tablename__ = "alert_states"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "camera_id",
+            "alert_type",
+            "condition_code",
+            name="uq_alert_states_camera_condition",
+        ),
+    )
+
+    id: Mapped[UUID] = uuid_primary_key()
+    camera_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        sa.ForeignKey("cameras.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    alert_type: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    condition_code: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        server_default=sa.false(),
+    )
+    last_observed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    last_sent_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    last_resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    last_telegram_message_id: Mapped[int | None] = mapped_column(sa.BigInteger)
+    details: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=sa.text("'{}'::jsonb"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.now(),
+    )
+
+
 class TelegramPrincipal(Base):
     __tablename__ = "telegram_principals"
     __table_args__ = (
@@ -573,4 +661,17 @@ sa.Index(
     "idx_camera_heartbeats_camera_received",
     CameraHeartbeat.camera_id,
     CameraHeartbeat.received_at.desc(),
+)
+
+sa.Index(
+    "idx_heartbeat_daily_summaries_camera_date",
+    HeartbeatDailySummary.camera_id,
+    HeartbeatDailySummary.summary_date_utc.desc(),
+)
+
+sa.Index(
+    "idx_alert_states_active",
+    AlertState.camera_id,
+    AlertState.alert_type,
+    postgresql_where=AlertState.is_active.is_(True),
 )

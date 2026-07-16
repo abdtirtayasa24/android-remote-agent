@@ -26,17 +26,17 @@
 
 ---
 
-## Task 2: Add health-state classification service
+## Task 2: Add health-state classification service ✅
 
 **Description:** Implement a pure service that classifies a camera as online, degraded, offline, or disabled based on current time, camera fields, latest heartbeat/upload information, and configured thresholds.
 
 **Acceptance criteria:**
-- [ ] Online, degraded, offline, and disabled classifications match the spec.
-- [ ] All degraded conditions are represented with stable condition codes.
-- [ ] The service is deterministic and unit-testable without a database.
+- [x] Online, degraded, offline, and disabled classifications match the spec.
+- [x] All degraded conditions are represented with stable condition codes.
+- [x] The service is deterministic and unit-testable without a database.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q -k health`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q -k health`
 
 **Dependencies:** Task 1
 
@@ -48,18 +48,18 @@
 
 ---
 
-## Task 3: Persist health state from the worker loop
+## Task 3: Persist health state from the worker loop ✅
 
 **Description:** Add a worker loop that periodically evaluates cameras, updates `cameras.health_state`, and records state changes without sending Telegram alerts yet.
 
 **Acceptance criteria:**
-- [ ] Worker updates camera health state based on heartbeat/upload age.
-- [ ] Disabled cameras remain disabled.
-- [ ] State transitions are committed atomically and safe to rerun.
+- [x] Worker updates camera health state based on heartbeat/upload age.
+- [x] Disabled cameras remain disabled.
+- [x] State transitions are committed atomically and safe to rerun.
 
 **Verification:**
 - [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` when `TEST_DATABASE_URL` is configured
-- [ ] Unit-only health tests pass when no test database is configured
+- [x] Unit-only health tests pass when no test database is configured
 
 **Dependencies:** Task 2
 
@@ -72,17 +72,17 @@
 
 ---
 
-## Task 4: Add Telegram outbound client and alert formatting
+## Task 4: Add Telegram outbound client and alert formatting ✅
 
 **Description:** Add a minimal Telegram Bot API client and formatting utilities for health and motion alerts. This task should not wire alerts into workers yet.
 
 **Acceptance criteria:**
-- [ ] Client sends messages and photos using `TELEGRAM_BOT_TOKEN` without logging secrets.
-- [ ] Formatting produces English-only, generic unauthorized-safe messages with no storage paths.
-- [ ] Client is mockable in tests.
+- [x] Client sends messages and photos using `TELEGRAM_BOT_TOKEN` without logging secrets.
+- [x] Formatting produces English-only, generic unauthorized-safe messages with no storage paths.
+- [x] Client is mockable in tests.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q -k telegram`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q -k telegram`
 
 **Dependencies:** Task 1
 
@@ -96,15 +96,15 @@
 
 ---
 
-## Task 5: Implement health alert deduplication and audit trail
+## Task 5: Implement health alert deduplication and audit trail ✅
 
 **Description:** Emit Telegram offline, recovery, and degraded alerts only on transitions, and record alert attempts/results for auditability.
 
 **Acceptance criteria:**
-- [ ] Offline alert is sent once per offline transition.
-- [ ] Recovery alert is sent once per recovery transition.
-- [ ] Repeated unchanged degraded conditions do not duplicate alerts.
-- [ ] Alert outcomes are recorded without storing secrets.
+- [x] Offline alert is sent once per offline transition.
+- [x] Recovery alert is sent once per recovery transition.
+- [x] Repeated unchanged degraded conditions do not duplicate alerts.
+- [x] Alert outcomes are recorded without storing secrets.
 
 **Verification:**
 - [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k health` when `TEST_DATABASE_URL` is configured
@@ -122,17 +122,18 @@
 
 ---
 
-## Task 6: Add heartbeat aggregation and expiry
+## Task 6: Add heartbeat aggregation and expiry ✅
 
 **Description:** Summarize heartbeat history before detailed rows expire, then delete old detailed heartbeat rows safely.
 
 **Acceptance criteria:**
-- [ ] Daily aggregate values include heartbeat count, min battery, max temperature, max queue size, and offline duration where data allows.
-- [ ] Detailed rows older than retention are deleted after aggregation.
-- [ ] Aggregation is idempotent.
+- [x] Daily aggregate values include heartbeat count, min battery, max temperature, max queue size, and offline duration where data allows.
+- [x] Detailed rows older than retention are deleted after aggregation.
+- [x] Aggregation is idempotent.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k heartbeat`
+- [x] Unit-only heartbeat aggregation tests pass when no test database is configured
+- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration -q -k heartbeat` when `TEST_DATABASE_URL` is configured
 
 **Dependencies:** Task 3
 
