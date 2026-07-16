@@ -24,7 +24,7 @@ Operator documentation:
 │   ├── scripts/
 │   ├── src/camera_agent/
 │   └── tests/
-├── server/                    # FastAPI server, workers, bot, models, migrations
+├── server/                    # FastAPI/webhook server, workers, models, migrations
 │   ├── alembic.ini
 │   ├── migrations/
 │   ├── pyproject.toml
@@ -63,6 +63,7 @@ DATABASE_MIGRATION_URL=postgresql://user:password@direct-host/neondb
 STORAGE_ROOT=/tmp/timelapse
 CAMERA_TOKEN_PEPPER=replace-with-at-least-32-random-characters
 REQUIRE_HTTPS=false
+# When TELEGRAM_BOT_TOKEN is set, also configure TELEGRAM_WEBHOOK_SECRET.
 ```
 
 Load the environment and run migrations:
@@ -163,7 +164,7 @@ The plaintext camera credential is shown only when created. Store it securely.
 
 ## Production Deployment
 
-Production runs on Ubuntu with native systemd services. Configure `infrastructure/.env`, then run:
+Production runs on Ubuntu with native systemd services. Telegram webhook handling runs inside `timelapse-api.service`; there is no separate bot service. When Telegram is enabled, API startup registers the webhook automatically and fails if registration fails. Configure `infrastructure/.env`, then run:
 
 ```bash
 sudo ./infrastructure/bootstrap-ubuntu.sh

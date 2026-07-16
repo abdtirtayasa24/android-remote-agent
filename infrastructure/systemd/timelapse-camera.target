@@ -3,7 +3,6 @@ Description=Time-lapse Camera Application
 Requires=timelapse-migrate.service
 Wants=timelapse-api.service
 Wants=timelapse-worker.service
-Wants=timelapse-bot.service
 After=timelapse-migrate.service
 
 [Install]

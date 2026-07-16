@@ -68,7 +68,7 @@ The design borrows surveillance concepts from motionEye and Frigate, but deliber
 | Database | Neon PostgreSQL: pooled runtime URL and direct migration URL |
 | ORM/driver | SQLAlchemy asyncio with asyncpg |
 | Migrations | Alembic |
-| Telegram | python-telegram-bot long polling |
+| Telegram | python-telegram-bot webhook dispatch inside FastAPI |
 | Image processing | OpenCV headless and Pillow |
 | Dashboard frontend | React, TypeScript, Tailwind, Vite static build under `dashboard/` |
 | Dashboard build runtime | Node.js 22 LTS and npm from NodeSource during deployment only |
@@ -99,9 +99,8 @@ flowchart LR
     subgraph VPS[Ubuntu 24.04 VPS]
         Nginx[Nginx + Certbot]
         subgraph Systemd[Native systemd services]
-            API[timelapse-api.service<br/>FastAPI API]
+            API[timelapse-api.service<br/>FastAPI + Telegram Webhook]
             Worker[timelapse-worker.service<br/>Background Worker]
-            Bot[timelapse-bot.service<br/>Telegram Bot Long Polling]
             Images[Image Storage<br/>/srv/timelapse/images]
             Exports[Temporary Exports<br/>/srv/timelapse/exports]
         end
@@ -112,12 +111,12 @@ flowchart LR
         Worker --> DB
         Worker --> Images
         Worker --> Exports
-        Bot --> DB
     end
 
     Agent -->|images and heartbeats| Internet
     Internet --> Nginx
-    Bot <--> Telegram
+    Telegram -->|HTTPS webhook| Internet
+    API -->|Bot API responses| Telegram
     Telegram <--> User
 ```
 
@@ -172,6 +171,7 @@ The API has intentionally narrow responsibilities:
 - authenticate camera credentials;
 - accept image uploads;
 - accept heartbeats;
+- receive authenticated Telegram webhook updates and dispatch command handlers;
 - expose liveness.
 
 The API does **not** run motion analysis, ZIP generation, retention, Telegram delivery, or reconciliation in request handlers. Long-running and expensive work belongs in workers.
@@ -192,7 +192,7 @@ PostgreSQL rows and `FOR UPDATE SKIP LOCKED` provide safe claiming. Redis or ano
 
 ### Telegram bot
 
-The bot uses python-telegram-bot with asynchronous handlers and long polling. Command handlers authorize, validate, and create/read jobs. They do not perform expensive ZIP or image-processing work.
+The bot uses python-telegram-bot asynchronous handlers initialized in the FastAPI lifespan. Telegram posts updates to `/api/v1/telegram/webhook`, protected by `X-Telegram-Bot-Api-Secret-Token`. API startup registers the webhook automatically and fails if registration fails, so systemd cannot report a healthy API without Telegram operations. Command handlers authorize, validate, and create/read jobs. They do not perform expensive ZIP or image-processing work.
 
 Initial administrator access uses `TELEGRAM_ADMIN_USER_ID`; `TELEGRAM_ADMIN_CHAT_ID` is not used.
 
@@ -369,7 +369,7 @@ flowchart LR
     Delete --> Complete[Complete export job]
 ```
 
-1. Telegram updates arrive through long polling.
+1. Telegram updates arrive through the authenticated FastAPI webhook.
 2. Authorization checks Telegram user ID before command handling.
 3. Unauthorized users receive a generic denial and no camera details.
 4. `/status [camera]` returns health and queue summaries without filesystem paths.
@@ -450,9 +450,8 @@ Production scripts live in `infrastructure/`:
 
 Systemd units:
 
-- `timelapse-api.service`
+- `timelapse-api.service` (FastAPI and Telegram webhook)
 - `timelapse-worker.service`
-- `timelapse-bot.service`
 - `timelapse-migrate.service`
 - `timelapse-camera.target`
 

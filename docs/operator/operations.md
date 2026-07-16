@@ -1,12 +1,12 @@
 # Operations Runbook
 
-This runbook covers daily operation of the server, worker, Telegram bot, Android device, exports, retention, and storage protection.
+This runbook covers daily operation of the API-hosted Telegram webhook, worker, Android device, exports, retention, and storage protection.
 
 ## Service status
 
 ```sh
 systemctl status timelapse-camera.target --no-pager
-systemctl status timelapse-api.service timelapse-worker.service timelapse-bot.service --no-pager
+systemctl status timelapse-api.service timelapse-worker.service --no-pager
 ```
 
 Follow logs:
@@ -14,7 +14,6 @@ Follow logs:
 ```sh
 journalctl -u timelapse-api.service -f
 journalctl -u timelapse-worker.service -f
-journalctl -u timelapse-bot.service -f
 ```
 
 ## Health checks
@@ -25,6 +24,8 @@ Local and public liveness:
 curl -fsS http://127.0.0.1:8100/health/live
 curl -fsS https://camera.example.com/health/live
 ```
+
+Telegram webhook handling runs inside `timelapse-api.service`. API startup automatically registers the public webhook and fails when Telegram registration fails.
 
 Telegram:
 
@@ -97,7 +98,6 @@ If free space is near `STORAGE_SEVERE_MIN_FREE_BYTES`, review retention and expo
 ```sh
 sudo systemctl restart timelapse-api.service
 sudo systemctl restart timelapse-worker.service
-sudo systemctl restart timelapse-bot.service
 ```
 
 Restarting services is safe; workers use persistent state and idempotent claiming for health, motion, export, retention, and reconciliation work.

@@ -16,6 +16,7 @@ This document maps Must Have MVP behavior to Automated or Manual acceptance chec
 | Motion detection | Static scene suppresses and controlled motion detects | Automated | `server/tests/unit/test_motion_detection.py` |
 | Motion worker | Analysis claiming, stale recovery, and failure behavior are safe | Automated | `server/tests/integration/test_motion_worker.py` |
 | Motion alerts | First image for a grouped event is sent only once | Automated | `server/tests/integration/test_motion_worker.py` |
+| Telegram webhook | Invalid webhook secrets are rejected; valid updates are queued; registration failure fails API startup | Automated | `server/tests/unit/test_telegram_webhook.py`, `server/tests/unit/test_telegram_application.py` |
 | Telegram auth | Unauthorized users receive no camera details | Automated | `server/tests/unit/test_telegram_authorization.py`, `server/tests/integration/test_telegram_commands.py` |
 | Telegram commands | `/help`, `/status`, `/latest` are authorized and safe | Automated | `server/tests/integration/test_telegram_commands.py` |
 | Telegram timezone | User-facing Telegram times are Asia/Jakarta | Automated | `server/tests/unit/test_telegram_messages.py`, `server/tests/integration/test_telegram_commands.py` |

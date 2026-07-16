@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     public_domain: str | None = None
 
     telegram_bot_token: SecretStr | None = None
+    telegram_webhook_secret: SecretStr | None = None
     telegram_admin_user_id: int | None = None
     health_worker_interval_seconds: int = Field(default=60, ge=10, le=3600)
     heartbeat_aggregation_interval_seconds: int = Field(default=3600, ge=60, le=86400)

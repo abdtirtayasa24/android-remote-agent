@@ -69,6 +69,18 @@ if [[ ! "${PUBLIC_DOMAIN}" =~ ^[a-z0-9.-]+$ ]]; then
     exit 2
 fi
 
+if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    if [[ -z "${TELEGRAM_WEBHOOK_SECRET:-}" ]]; then
+        echo "TELEGRAM_WEBHOOK_SECRET is required with TELEGRAM_BOT_TOKEN." >&2
+        exit 2
+    fi
+
+    if [[ ! "${TELEGRAM_WEBHOOK_SECRET}" =~ ^[A-Za-z0-9_-]{1,256}$ ]]; then
+        echo "TELEGRAM_WEBHOOK_SECRET has an invalid format." >&2
+        exit 2
+    fi
+fi
+
 if [[ ! "${LETSENCRYPT_EMAIL}" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]]; then
     echo "LETSENCRYPT_EMAIL is invalid." >&2
     exit 2
@@ -303,6 +315,8 @@ if [[ "$migration_status" -ne 0 ]]; then
     exit "$migration_status"
 fi
 
+systemctl disable --now timelapse-bot.service 2>/dev/null || true
+
 if [[ -d "${release_directory}/dashboard/dist" ]]; then
     echo "Publishing dashboard static assets..."
 
@@ -325,7 +339,6 @@ for unit_name in \
     timelapse-migrate.service \
     timelapse-api.service \
     timelapse-worker.service \
-    timelapse-bot.service \
     timelapse-camera.target
 do
     install \
@@ -401,13 +414,11 @@ systemctl reset-failed \
     timelapse-migrate.service \
     timelapse-api.service \
     timelapse-worker.service \
-    timelapse-bot.service \
     2>/dev/null || true
 
 systemctl restart timelapse-migrate.service
 systemctl restart timelapse-api.service
 systemctl restart timelapse-worker.service
-systemctl restart timelapse-bot.service
 systemctl start timelapse-camera.target
 
 echo "Waiting for local API liveness..."

@@ -8,7 +8,7 @@ Use this guide when production behavior is inconsistent, storage is under pressu
 
    ```sh
    date -u
-   systemctl status timelapse-api.service timelapse-worker.service timelapse-bot.service --no-pager
+   systemctl status timelapse-api.service timelapse-worker.service --no-pager
    journalctl -u timelapse-api.service -n 200 --no-pager
    journalctl -u timelapse-worker.service -n 300 --no-pager
    df -h /srv/timelapse
@@ -81,12 +81,14 @@ If upload has begun, do not manually delete database rows. Preserve files and lo
 
 ## Telegram authorization issue
 
-Initial administrator access uses `TELEGRAM_ADMIN_USER_ID`. Confirm the bot token and admin user ID in `/etc/android-remote/server.env`, then restart:
+Initial administrator access uses `TELEGRAM_ADMIN_USER_ID`. Confirm the bot token, webhook secret, public domain, and admin user ID in `/etc/android-remote/server.env`, then restart the API-hosted webhook:
 
 ```sh
-sudo systemctl restart timelapse-bot.service
-journalctl -u timelapse-bot.service -n 100 --no-pager
+sudo systemctl restart timelapse-api.service
+journalctl -u timelapse-api.service -n 100 --no-pager
 ```
+
+If Telegram webhook registration fails, API startup fails. Inspect the redacted API error, verify outbound HTTPS connectivity to Telegram, and verify `TELEGRAM_WEBHOOK_SECRET` contains only letters, digits, underscores, or hyphens.
 
 Unauthorized users receive a generic denial and no camera details.
 

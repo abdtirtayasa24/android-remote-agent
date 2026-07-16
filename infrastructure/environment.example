@@ -26,4 +26,6 @@ RECONCILIATION_WORKER_INTERVAL_SECONDS=3600
 # Used in later milestones
 CAMERA_TOKEN_PEPPER=replace-with-a-32-byte-random-value
 TELEGRAM_BOT_TOKEN=
+# Generate 1-256 characters using only A-Z, a-z, 0-9, underscore, and hyphen.
+TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_ADMIN_USER_ID=

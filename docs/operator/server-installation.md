@@ -54,10 +54,11 @@ STORAGE_HARD_MIN_FREE_BYTES=536870912
 STORAGE_SEVERE_MIN_FREE_BYTES=1073741824
 CAMERA_TOKEN_PEPPER=replace-with-a-32-byte-random-value
 TELEGRAM_BOT_TOKEN=123456:replace-with-real-token
+TELEGRAM_WEBHOOK_SECRET=replace-with-random-letters-digits-underscore-hyphen
 TELEGRAM_ADMIN_USER_ID=123456789
 ```
 
-`TELEGRAM_ADMIN_USER_ID` bootstraps the first administrator. Do not configure or require `TELEGRAM_ADMIN_CHAT_ID`.
+`TELEGRAM_ADMIN_USER_ID` bootstraps the first administrator. Do not configure or require `TELEGRAM_ADMIN_CHAT_ID`. `TELEGRAM_WEBHOOK_SECRET` is required when the bot token is configured and must contain 1–256 letters, digits, underscores, or hyphens.
 
 ## 3. Deploy systemd services
 
@@ -69,10 +70,11 @@ sudo ./infrastructure/deploy-systemd.sh
 
 The deployment script validates Neon URL roles, installs the server package into `/opt/android-remote/.venv`, builds the React/Tailwind dashboard when `dashboard/package.json` is present, publishes dashboard static assets to `/var/www/android-remote/dashboard`, runs Alembic migrations, installs systemd units, configures Nginx, obtains/uses Let's Encrypt certificates, and starts:
 
-- `timelapse-api.service`
+- `timelapse-api.service` (FastAPI and Telegram webhook)
 - `timelapse-worker.service`
-- `timelapse-bot.service`
 - `timelapse-camera.target`
+
+During API startup, the application registers `https://PUBLIC_DOMAIN/api/v1/telegram/webhook` with Telegram. Registration failure fails API startup and therefore fails deployment liveness verification.
 
 Dashboard builds use npm with a committed lockfile. Before generating or updating `dashboard/package-lock.json`, confirm the npm registry points to the public registry:
 
@@ -94,7 +96,7 @@ sudo ./infrastructure/verify-foundation.sh
 Then check service status:
 
 ```sh
-systemctl status timelapse-api.service timelapse-worker.service timelapse-bot.service --no-pager
+systemctl status timelapse-api.service timelapse-worker.service --no-pager
 curl -fsS https://camera.example.com/health/live
 ```
 
@@ -163,5 +165,5 @@ Rollback by repointing `current` to the previous release and restarting services
 
 ```sh
 sudo ln -sfnT /opt/android-remote/releases/<previous-release> /opt/android-remote/current
-sudo systemctl restart timelapse-api.service timelapse-worker.service timelapse-bot.service
+sudo systemctl restart timelapse-api.service timelapse-worker.service
 ```

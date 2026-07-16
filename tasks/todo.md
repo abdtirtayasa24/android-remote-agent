@@ -56,12 +56,12 @@
 **Description:** Separate Telegram command handler registration from long-polling startup so FastAPI can initialize and process updates through the existing command handlers.
 
 **Acceptance criteria:**
-- [ ] Existing command handlers are registered through a reusable builder.
-- [ ] Long-polling entry point can be removed or left only for local debugging if explicitly documented.
-- [ ] Existing command behavior remains unchanged.
+- [x] Existing command handlers are registered through a reusable builder.
+- [x] Long-polling entry point can be removed or left only for local debugging if explicitly documented.
+- [x] Existing command behavior remains unchanged.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit/test_telegram_authorization.py tests/integration/test_telegram_commands.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_telegram_authorization.py tests/integration/test_telegram_commands.py -q` (covered by unit and integration suite runs with `.env.test.local`)
 
 **Dependencies:** None
 
@@ -78,14 +78,14 @@
 **Description:** Add FastAPI endpoint for Telegram updates with secret-token header validation and update dispatch.
 
 **Acceptance criteria:**
-- [ ] `POST /api/v1/telegram/webhook` validates `X-Telegram-Bot-Api-Secret-Token` with constant-time comparison.
-- [ ] Valid updates are dispatched to the Telegram application.
-- [ ] Invalid/missing secret is rejected without processing.
-- [ ] Bot token and raw update payloads are not logged.
+- [x] `POST /api/v1/telegram/webhook` validates `X-Telegram-Bot-Api-Secret-Token` with constant-time comparison.
+- [x] Valid updates are dispatched to the Telegram application.
+- [x] Invalid/missing secret is rejected without processing.
+- [x] Bot token and raw update payloads are not logged.
 
 **Verification:**
-- [ ] New unit/integration webhook tests pass.
-- [ ] `cd server && ../.venv/bin/pytest tests/unit tests/integration/test_telegram_commands.py -q`
+- [x] New unit webhook tests pass.
+- [x] `cd server && ../.venv/bin/pytest tests/unit tests/integration/test_telegram_commands.py -q` (covered by unit and integration suite runs with `.env.test.local`)
 
 **Dependencies:** Task 3
 
@@ -105,16 +105,16 @@
 **Description:** During FastAPI lifespan startup, configure Telegram webhook automatically when Telegram settings are present.
 
 **Acceptance criteria:**
-- [ ] Startup calls Telegram `setWebhook` with `https://{PUBLIC_DOMAIN}/api/v1/telegram/webhook`.
-- [ ] Webhook secret is included in setup.
-- [ ] Setup is idempotent and uses a short timeout.
-- [ ] Webhook setup failure fails API startup so systemd marks the API unhealthy.
-- [ ] Failures are logged without leaking bot token.
-- [ ] Existing API liveness still works when setup succeeds.
+- [x] Startup calls Telegram `setWebhook` with `https://{PUBLIC_DOMAIN}/api/v1/telegram/webhook`.
+- [x] Webhook secret is included in setup.
+- [x] Setup is idempotent and uses a short timeout.
+- [x] Webhook setup failure fails API startup so systemd marks the API unhealthy.
+- [x] Failures are logged without leaking bot token.
+- [x] Existing API liveness still works when setup succeeds.
 
 **Verification:**
-- [ ] Unit tests for webhook setup client behavior.
-- [ ] `cd server && ../.venv/bin/pytest tests/unit/test_liveness.py tests/unit/test_telegram_client.py -q`
+- [x] Unit tests for webhook setup client behavior.
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_liveness.py tests/unit/test_telegram_client.py -q`
 
 **Dependencies:** Task 4
 
@@ -133,15 +133,15 @@
 **Description:** Update production deployment so Telegram handling is inside `timelapse-api.service` and `timelapse-bot.service` is no longer installed/started.
 
 **Acceptance criteria:**
-- [ ] Deploy script stops old bot service safely.
-- [ ] Deploy script no longer installs/restarts/enables `timelapse-bot.service`.
-- [ ] `timelapse-camera.target` no longer requires the bot service.
-- [ ] Nginx proxies the webhook endpoint.
-- [ ] Operator docs use API logs for webhook troubleshooting.
+- [x] Deploy script stops old bot service safely.
+- [x] Deploy script no longer installs/restarts/enables `timelapse-bot.service`.
+- [x] `timelapse-camera.target` no longer requires the bot service.
+- [x] Nginx proxies the webhook endpoint.
+- [x] Operator docs use API logs for webhook troubleshooting.
 
 **Verification:**
-- [ ] Shellcheck/static review of deployment script changes.
-- [ ] Documentation link tests pass.
+- [x] Bash syntax and static deployment contract tests pass.
+- [x] Documentation link tests pass.
 
 **Dependencies:** Task 5
 

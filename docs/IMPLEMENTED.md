@@ -61,7 +61,7 @@ Implemented under `server/src/timelapse`:
 - SQLAlchemy asyncio database setup.
 - Alembic migrations.
 - PostgreSQL schema for cameras, credentials, images, heartbeats, health summaries, alert states, motion analyses/events, Telegram principals, exports, export parts, and audit events.
-- Native systemd process entry points for API, worker, bot, and migrations.
+- Native systemd process entry points for API-hosted Telegram webhook, worker, and migrations.
 - Structured process logging helpers.
 
 ## Camera Credentials and Authentication
@@ -160,7 +160,10 @@ Tests cover pure detector behavior, claiming/recovery, threaded detection execut
 
 Implemented:
 
-- python-telegram-bot long polling application.
+- python-telegram-bot application hosted in the FastAPI lifespan.
+- Secret-token-protected Telegram webhook endpoint.
+- Automatic webhook registration during API startup.
+- Fail-fast API startup when webhook registration fails.
 - Authorization before command handling.
 - Initial administrator bootstrap through `TELEGRAM_ADMIN_USER_ID` only.
 - Generic unauthorized denial with no camera details.
@@ -241,7 +244,7 @@ Implemented infrastructure:
 - `deploy-systemd.sh` for release copy, package install, migrations, systemd/Nginx/Certbot configuration, and service restart.
 - `verify-foundation.sh` for deployment foundation verification.
 - Nginx HTTP and HTTPS templates.
-- systemd units for API, worker, bot, migration, and target.
+- systemd units for API-hosted Telegram webhook, worker, migration, and target.
 - `camera-admin.sh` wrapper for installed credential CLI.
 - `infrastructure/environment.example` with safe placeholders.
 

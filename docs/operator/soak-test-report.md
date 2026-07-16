@@ -32,7 +32,7 @@ Run these checks and paste command output or evidence file paths.
 
 ```sh
 sudo ./infrastructure/verify-foundation.sh
-systemctl status timelapse-api.service timelapse-worker.service timelapse-bot.service --no-pager
+systemctl status timelapse-api.service timelapse-worker.service --no-pager
 curl -fsS https://camera.example.com/health/live
 ```
 

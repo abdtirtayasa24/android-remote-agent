@@ -39,7 +39,6 @@ for service_name in \
     timelapse-migrate.service \
     timelapse-api.service \
     timelapse-worker.service \
-    timelapse-bot.service \
     timelapse-camera.target
 do
     if systemctl is-active --quiet "$service_name"; then
@@ -189,8 +188,7 @@ echo
 echo "Service memory:"
 for service_name in \
     timelapse-api.service \
-    timelapse-worker.service \
-    timelapse-bot.service
+    timelapse-worker.service
 do
     systemctl show \
         "$service_name" \

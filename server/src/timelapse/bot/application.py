@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import asyncio
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,8 +22,9 @@ from timelapse.bot.commands import (
     handle_status_command,
 )
 from timelapse.configuration import get_settings
-from timelapse.database import close_database, session_scope
-from timelapse.logging import configure_logging
+from timelapse.database import session_scope
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -183,15 +184,16 @@ async def _cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.effective_chat.send_message(text)
 
 
-def build_application() -> Application:
-    settings = get_settings()
+def build_application(*, bot_token: str | None = None) -> Application:
+    if bot_token is None:
+        settings = get_settings()
 
-    if settings.telegram_bot_token is None:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
+        if settings.telegram_bot_token is None:
+            raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
 
-    application = (
-        Application.builder().token(settings.telegram_bot_token.get_secret_value()).build()
-    )
+        bot_token = settings.telegram_bot_token.get_secret_value()
+
+    application = Application.builder().token(bot_token).build()
     application.add_handler(CommandHandler("help", _help))
     application.add_handler(CommandHandler("status", _status))
     application.add_handler(CommandHandler("latest", _latest))
@@ -201,25 +203,40 @@ def build_application() -> Application:
     return application
 
 
-async def run_bot() -> None:
-    settings = get_settings()
-    configure_logging("telegram-bot", settings.log_level)
-    application = build_application()
+async def start_webhook_application(
+    *,
+    application: Application,
+    webhook_url: str,
+    webhook_secret: str,
+) -> None:
+    await application.initialize()
 
     try:
-        await application.initialize()
         await application.start()
-        await application.updater.start_polling()
-        await asyncio.Event().wait()
-    finally:
-        await application.stop()
+        webhook_configured = await application.bot.set_webhook(
+            url=webhook_url,
+            secret_token=webhook_secret,
+            allowed_updates=["message"],
+            connect_timeout=10,
+            read_timeout=10,
+            write_timeout=10,
+            pool_timeout=10,
+        )
+
+        if not webhook_configured:
+            raise RuntimeError("telegram_webhook_setup_failed")
+    except Exception as error:
+        if application.running:
+            await application.stop()
         await application.shutdown()
-        await close_database()
+        LOGGER.warning(
+            "telegram_webhook_setup_failed error_type=%s",
+            type(error).__name__,
+        )
+        raise RuntimeError("telegram_webhook_setup_failed") from None
 
 
-def main() -> None:
-    asyncio.run(run_bot())
-
-
-if __name__ == "__main__":
-    main()
+async def stop_webhook_application(*, application: Application) -> None:
+    if application.running:
+        await application.stop()
+    await application.shutdown()
