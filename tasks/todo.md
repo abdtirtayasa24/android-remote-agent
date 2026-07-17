@@ -1,55 +1,5 @@
-# Todo: Telegram Webhook, Daily Videos, Voice Playback, Mini App Dashboard
+# Todo: Telegram Webhook, Daily Videos, Voice Playback
 
-## Task 1: Update repository rules for dashboard frontend
-
-**Description:** Explicitly allow React/Tailwind dashboard application code under `dashboard/` while preserving Python-only rules for server and camera-agent runtime code.
-
-**Acceptance criteria:**
-- [x] Repository rules/docs allow `dashboard/` React/Tailwind code.
-- [x] Server and camera-agent Python-only rule remains intact.
-- [x] The exception is narrow and documented.
-
-**Verification:**
-- [x] Documentation links/tests still pass: `cd server && ../.venv/bin/pytest tests/unit/test_documentation_links.py -q`
-
-**Dependencies:** None
-
-**Files likely touched:**
-- `AGENTS.md`
-- `README.md`
-- `docs/ARCHITECTURE.md`
-
-**Estimated scope:** Small
-
----
-
-## Task 2: Decide and document dashboard build/deployment strategy
-
-**Description:** Select how Vite/React/Tailwind is built in production and how Nginx serves the compiled `dist` directory.
-
-**Acceptance criteria:**
-- [x] Node.js 22 LTS/npm installation via documented NodeSource setup is documented.
-- [x] npm registry is pinned to `https://registry.npmjs.org/` before generating `package-lock.json`.
-- [x] Build strategy requires a committed project-local `dashboard/.npmrc` with the intended registry once the dashboard package is created.
-- [x] Deployment runs `npm ci` and `npm run build` before switching the current release.
-- [x] Deployment path for `dashboard/dist` is defined as `/var/www/android-remote/dashboard`.
-- [x] Nginx static serving path is defined.
-
-**Verification:**
-- [x] Static review of docs and deployment plan.
-
-**Dependencies:** Task 1
-
-**Files likely touched:**
-- `README.md`
-- `docs/ARCHITECTURE.md`
-- `docs/operator/server-installation.md`
-- `infrastructure/bootstrap-ubuntu.sh`
-- `infrastructure/deploy-systemd.sh`
-
-**Estimated scope:** Medium
-
----
 
 ## Task 3: Refactor Telegram bot for webhook dispatch
 
@@ -247,7 +197,7 @@
 - [x] MP4 is sent once per completed job.
 - [x] Restart after send does not resend completed videos.
 - [x] MP4 file is deleted immediately after successful send.
-- [x] Job metadata remains for dashboard/history.
+- [x] Job metadata remains for history.
 
 **Verification:**
 - [x] Integration tests for generate/send/delete/resume behavior.
@@ -424,143 +374,6 @@
 
 ---
 
-## Task 17: Scaffold Vite React TypeScript Tailwind dashboard
-
-**Description:** Add a new `dashboard/` package that builds static Mini App assets to `dashboard/dist`.
-
-**Acceptance criteria:**
-- [ ] Vite React TypeScript app is present.
-- [ ] Tailwind is configured.
-- [ ] `dashboard/.npmrc` pins `registry=https://registry.npmjs.org/`.
-- [ ] `package-lock.json` is generated after confirming the current npm registry points to `https://registry.npmjs.org/`.
-- [ ] `npm run build` emits static `dist` assets.
-- [ ] Lockfile is committed.
-- [ ] Initial page loads Telegram Web App script.
-
-**Verification:**
-- [ ] `cd dashboard && npm ci && npm run build`
-
-**Dependencies:** Task 1, Task 2
-
-**Files likely touched:**
-- `dashboard/.npmrc`
-- `dashboard/package.json`
-- `dashboard/package-lock.json`
-- `dashboard/index.html`
-- `dashboard/src/*`
-- `dashboard/tailwind.config.*`
-- `dashboard/vite.config.*`
-
-**Estimated scope:** Medium
-
----
-
-## Task 18: Add Telegram Mini App initData verification
-
-**Description:** Verify Telegram Mini App `initData` server-side and map it to an authorized Telegram principal.
-
-**Acceptance criteria:**
-- [ ] HMAC verification follows Telegram Web App rules.
-- [ ] Expired `auth_date` is rejected.
-- [ ] Tampered data is rejected.
-- [ ] Unauthorized users get generic denial.
-- [ ] Existing `TELEGRAM_ADMIN_USER_ID` bootstrap remains valid.
-
-**Verification:**
-- [ ] Unit tests with valid, tampered, expired, and unauthorized initData.
-
-**Dependencies:** Task 4
-
-**Files likely touched:**
-- `server/src/timelapse/services/telegram_webapp_auth.py`
-- `server/src/timelapse/api/dashboard.py`
-- `server/tests/unit/`
-
-**Estimated scope:** Medium
-
----
-
-## Task 19: Add dashboard API endpoints
-
-**Description:** Add JSON endpoints for dashboard summary, cameras, recent images/events, jobs, and command history.
-
-**Acceptance criteria:**
-- [ ] Endpoints require valid Mini App initData.
-- [ ] Responses expose no filesystem paths.
-- [ ] Timestamps are consistent and dashboard-ready.
-- [ ] Dashboard data includes daily videos and voice command statuses.
-
-**Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_dashboard_api.py -q`
-
-**Dependencies:** Task 18, Task 10, Task 12
-
-**Files likely touched:**
-- `server/src/timelapse/api/dashboard.py`
-- `server/src/timelapse/schemas/dashboard.py`
-- `server/src/timelapse/services/dashboard_reports.py`
-- `server/tests/integration/`
-
-**Estimated scope:** Medium
-
----
-
-## Task 20: Build Mini App dashboard UI
-
-**Description:** Implement mobile-first React/Tailwind UI consuming dashboard APIs and Telegram native features.
-
-**Acceptance criteria:**
-- [ ] Overview, Cameras, Motion, Daily Videos, Exports, and Voice Playback views exist.
-- [ ] UI handles loading, error, and empty states.
-- [ ] Telegram light/dark theme params are respected.
-- [ ] BackButton and haptic feedback are used where appropriate.
-- [ ] App works at 320px mobile width.
-- [ ] No unsafe rendering of untrusted strings.
-
-**Verification:**
-- [ ] `cd dashboard && npm run build`
-- [ ] Manual mobile-width review.
-
-**Dependencies:** Task 19
-
-**Files likely touched:**
-- `dashboard/src/App.tsx`
-- `dashboard/src/api.ts`
-- `dashboard/src/telegram.ts`
-- `dashboard/src/components/*`
-- `dashboard/src/styles.css`
-
-**Estimated scope:** Medium
-
----
-
-## Task 21: Serve dashboard via Nginx and add `/dashboard` command
-
-**Description:** Deploy static dashboard assets and add a Telegram command that opens the Mini App.
-
-**Acceptance criteria:**
-- [ ] Nginx serves `/dashboard/` from built `dist` assets.
-- [ ] Deep/static asset paths resolve correctly.
-- [ ] `/dashboard` command sends a Web App button to authorized users.
-- [ ] Unauthorized users get generic denial.
-
-**Verification:**
-- [ ] `curl -fsS https://<domain>/dashboard/` in deployed environment.
-- [ ] Focused Telegram command tests.
-
-**Dependencies:** Task 17, Task 20, Task 6
-
-**Files likely touched:**
-- `infrastructure/nginx/timelapse-camera.conf.template`
-- `infrastructure/deploy-systemd.sh`
-- `server/src/timelapse/bot/application.py`
-- `server/src/timelapse/bot/commands.py`
-- `server/tests/integration/test_telegram_commands.py`
-
-**Estimated scope:** Medium
-
----
-
 ## Task 22: Add cleanup/reconciliation for video and audio artifacts
 
 **Description:** Extend storage layout, reconciliation, and cleanup logic for generated videos and voice-note audio files.
@@ -588,13 +401,13 @@
 
 ## Task 23: Update documentation and operator runbooks
 
-**Description:** Update project and operator docs to reflect webhook bot, daily videos, voice playback, dashboard, new services, and acceptance steps.
+**Description:** Update project and operator docs to reflect webhook bot, daily videos, voice playback, new services, and acceptance steps.
 
 **Acceptance criteria:**
-- [ ] README describes new dashboard and commands.
-- [ ] Architecture doc reflects webhook, video jobs, command queue, and React dashboard.
+- [ ] README describes new commands.
+- [ ] Architecture doc reflects webhook, video jobs, and command queue.
 - [ ] Implemented features doc is updated.
-- [ ] Operator docs include webhook troubleshooting, dashboard deployment, voice playback setup, and daily video acceptance.
+- [ ] Operator docs include webhook troubleshooting, voice playback setup, and daily video acceptance.
 
 **Verification:**
 - [ ] `cd server && ../.venv/bin/pytest tests/unit/test_documentation_links.py -q`
@@ -623,7 +436,6 @@
 - [ ] Camera-agent tests pass.
 - [ ] Ruff check passes.
 - [ ] Ruff format check passes.
-- [ ] Dashboard build passes.
 - [ ] Real-environment acceptance checklist is documented.
 
 **Verification:**
@@ -631,7 +443,6 @@
 - [ ] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
 - [ ] `.venv/bin/ruff check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
 - [ ] `.venv/bin/ruff format --check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
-- [ ] `cd dashboard && npm ci && npm run build`
 
 **Dependencies:** All implementation tasks
 

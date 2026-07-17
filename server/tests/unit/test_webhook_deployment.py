@@ -41,7 +41,7 @@ def test_nginx_proxies_camera_command_endpoints_with_narrow_methods() -> None:
     assert "/commands/next$" in nginx
     assert "/commands/[0-9a-f-]+/media$" in nginx
     assert "/commands/[0-9a-f-]+/result$" in nginx
-    assert nginx.count("limit_except GET") >= 4
+    assert nginx.count("limit_except GET") >= 3
     assert nginx.count("limit_except POST") >= 3
 
 

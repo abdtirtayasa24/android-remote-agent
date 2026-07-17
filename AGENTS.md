@@ -39,7 +39,6 @@ When implementing behavior, use TDD:
 ## Code Style
 
 - Python only for server and camera-agent application code.
-- React, TypeScript, and Tailwind application code is allowed only under `dashboard/` for the Telegram Mini App dashboard.
 - Follow Ruff configuration in `server/pyproject.toml`.
 - Keep imports sorted and formatted by Ruff.
 - Use type hints for new Python code.

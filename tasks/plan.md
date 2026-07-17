@@ -1,13 +1,12 @@
-# Implementation Plan: Telegram Webhook, Daily Videos, Voice Playback, and Mini App Dashboard
+# Implementation Plan: Telegram Webhook, Daily Videos, Voice Playback
 
 ## Overview
 
-This plan adds four coordinated feature areas to the Android Time-Lapse Security Camera project:
+This plan adds three coordinated feature areas to the Android Time-Lapse Security Camera project:
 
 1. Daily Asia/Jakarta time-lapse MP4 generation from stored still images, automatically sent via Telegram and deleted immediately after successful delivery.
 2. Telegram voice-note playback on the Android phone through a server-side camera command queue and Android polling loop.
 3. Migration from `timelapse-bot.service` long polling to Telegram Webhook API handled inside `timelapse-api.service`, with webhook setup performed automatically during API startup.
-4. A mobile-fit Telegram Mini App dashboard built with React and Tailwind, compiled to static assets and served by Nginx from the dashboard `dist` directory.
 
 The design preserves the existing architecture rule that request handlers stay lightweight: video generation, audio normalization, command execution, and retries happen in workers or the Android agent, not inside FastAPI request handlers.
 
@@ -16,7 +15,6 @@ The design preserves the existing architecture rule that request handlers stay l
 - Daily video boundaries use the Asia/Jakarta calendar day and are converted to UTC internally.
 - Generated daily MP4 files are deleted immediately after successful Telegram send; database metadata remains for history/reporting.
 - Voice-note playback requires a Telegram command to configure which camera should receive voice playback commands.
-- React and Tailwind are approved for the Mini App dashboard, even though the current repository rule says Python-only application code. The repository rule/docs should be updated explicitly before implementation.
 - Telegram webhook registration should be performed automatically during API startup.
 
 ## Current Architecture Fit
@@ -49,7 +47,7 @@ Automatic setup on API startup:
 
 Add video job tables modelled after export jobs. The worker creates one job per enabled camera per Asia/Jakarta day, snapshots stored scheduled images, generates MP4 with `ffmpeg`, sends it through Telegram, then deletes the MP4 file immediately after successful send.
 
-The database keeps job metadata for dashboard/history:
+The database keeps job metadata for history:
 
 - status
 - image count
@@ -71,27 +69,6 @@ Target camera selection:
 - Without an argument, it shows current configured playback camera and available enabled cameras.
 - With a camera slug, it stores that camera as the authorized user's voice playback target.
 - If a user sends a voice note without a configured camera, the bot replies with a short instruction to run `/speakcamera <camera>`.
-
-### 4. Dashboard is React + Tailwind static build served by Nginx
-
-Add a new frontend package, likely `dashboard/`, using Vite + React + TypeScript + Tailwind. It builds to `dashboard/dist`. Nginx serves `/dashboard/` directly from the compiled `dist` folder and proxies `/api/` to FastAPI.
-
-The Mini App uses:
-
-```html
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-```
-
-Dashboard API requests include Telegram `initData`; FastAPI validates `initData` HMAC using the bot token before returning data.
-
-### 5. Nginx serves static dashboard and proxies APIs
-
-Nginx will add:
-
-- `/dashboard/` static alias to the built dashboard dist directory.
-- `/api/v1/dashboard/*` proxy to FastAPI.
-- `/api/v1/telegram/webhook` proxy to FastAPI.
-- Existing camera image/heartbeat API routes remain.
 
 ## Data Model Plan
 
@@ -128,7 +105,6 @@ Constraints/indexes:
 
 - unique `(camera_id, local_date_jakarta)`
 - pending/processing index for worker claiming
-- recent jobs index for dashboard
 
 ### New table: `timelapse_video_job_images`
 
@@ -185,7 +161,6 @@ Suggested columns:
 Indexes:
 
 - pending commands by `(camera_id, status, created_at)`
-- recent commands by requester/dashboard
 
 ### Update table: `telegram_principals`
 
@@ -233,29 +208,6 @@ Authorization: Bearer cam_...
 
 Reports `started`, `completed`, or `failed` with stable error code.
 
-### Dashboard APIs
-
-All dashboard endpoints require Telegram Mini App `initData` validation.
-
-Suggested initial endpoints:
-
-```http
-GET /api/v1/dashboard/summary
-GET /api/v1/dashboard/cameras
-GET /api/v1/dashboard/cameras/{camera_slug}
-GET /api/v1/dashboard/recent-images
-GET /api/v1/dashboard/recent-events
-GET /api/v1/dashboard/jobs
-GET /api/v1/dashboard/commands
-```
-
-Response policy:
-
-- Do not expose filesystem paths.
-- Use stable, typed JSON shapes.
-- Include Asia/Jakarta formatted display timestamps or UTC ISO timestamps plus timezone metadata; prefer one consistent pattern across endpoints.
-- Scope all data to authorized Telegram users. Current system has global viewer/admin roles, not per-camera ACLs, so preserve existing access semantics unless explicitly expanded later.
-
 ## Telegram Bot Command Plan
 
 Existing commands remain:
@@ -275,18 +227,6 @@ Add commands:
 - One arg: validate camera slug, set preferred voice playback camera for that Telegram principal.
 - Authorized users only.
 - English messages only.
-
-### `/dashboard`
-
-- Sends a Telegram keyboard/button that opens the Mini App.
-- Authorized users only.
-- Button URL points to `https://{PUBLIC_DOMAIN}/dashboard/`.
-
-### Deferred `/timelapse [camera]`
-
-- Defer this command until after the dashboard is fully implemented.
-- The dashboard is the primary surface for daily video job statuses.
-- Add `/timelapse` later only if operators still need a lightweight command-line-style Telegram status view.
 
 ## Android Agent Plan
 
@@ -311,68 +251,6 @@ Configuration additions:
 
 Implementation must not block capture scheduling. Playback can run in a separate task/thread, but the system should avoid playing multiple voice notes concurrently on the same camera. If `termux-media-player` is missing, times out, or returns a non-zero exit code, report a stable playback error code and delete the temporary audio file.
 
-## Mini App Frontend Plan
-
-### Package
-
-Create `dashboard/`:
-
-```text
-dashboard/
-  .npmrc
-  package.json
-  package-lock.json
-  index.html
-  src/
-    main.tsx
-    App.tsx
-    api.ts
-    telegram.ts
-    components/
-    styles.css
-  tailwind.config.*
-  vite.config.*
-  tsconfig.json
-```
-
-`dashboard/.npmrc` should pin the npm registry to `https://registry.npmjs.org/`. Before generating or updating `package-lock.json`, confirm the current environment is using the intended registry, for example with `npm config get registry`, and set it if necessary.
-
-Preferred stack:
-
-- Vite
-- React
-- TypeScript
-- Tailwind CSS
-- Minimal dependencies
-
-### UI principles
-
-- Mobile-first, works at 320px width.
-- Uses Telegram theme params for light/dark mode.
-- Uses Telegram BackButton where navigation depth exists.
-- Uses haptic feedback for refresh/actions when available.
-- Loading, empty, and error states for every view.
-- No unsafe `innerHTML` for API-provided content.
-- Avoid heavy client state libraries initially; local state and small typed API helpers are enough.
-
-### Initial screens
-
-1. Overview
-   - health summary
-   - latest capture time
-   - daily image count
-   - active issues
-2. Cameras
-   - per-camera health, queue, battery, temperature
-3. Motion
-   - recent motion event summaries
-4. Daily videos
-   - recent video generation/delivery statuses
-5. Exports
-   - recent export jobs
-6. Voice playback
-   - current selected camera and recent command statuses
-
 ## Deployment Plan
 
 ### System packages
@@ -380,17 +258,6 @@ Preferred stack:
 Add to bootstrap:
 
 - `ffmpeg`
-- Node.js 22 LTS and npm from a documented, pinned NodeSource setup
-
-Dashboard build strategy:
-
-- Commit `dashboard/package-lock.json`.
-- Commit `dashboard/.npmrc` with `registry=https://registry.npmjs.org/`.
-- Before first lockfile generation in the current environment, run `npm config get registry` and set the registry to `https://registry.npmjs.org/` if needed.
-- During deployment, run `npm ci` and `npm run build` inside the release's `dashboard/` directory before switching `/opt/android-remote/current`.
-- If dashboard build fails, deployment fails and the current release remains unchanged.
-- Publish only compiled assets to `/var/www/android-remote/dashboard` with Nginx-readable permissions.
-- If Telegram webhook setup fails during API startup, API startup fails so systemd reports an unhealthy service instead of silently running without Telegram operations.
 
 ### Storage layout
 
@@ -412,9 +279,7 @@ Add directories:
 
 Add routes:
 
-- `/dashboard/` static alias to dashboard dist
 - `/api/v1/telegram/webhook` proxy to API
-- `/api/v1/dashboard/` proxy to API
 - `/api/v1/cameras/*/commands/*` proxy to API
 
 Review body size limits:
@@ -430,7 +295,6 @@ Suggested additions:
 ```env
 TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_WEBHOOK_AUTO_SETUP=true
-TELEGRAM_WEBAPP_ENABLED=true
 DAILY_TIMELAPSE_ENABLED=true
 DAILY_TIMELAPSE_SEND_HOUR_JAKARTA=0
 DAILY_TIMELAPSE_SEND_MINUTE_JAKARTA=10
@@ -442,11 +306,6 @@ CAMERA_COMMAND_POLL_SECONDS=3
 ```
 
 ## Phased Task List
-
-### Phase 0: Rule and dependency preparation
-
-- Task 1: Update repository docs/rules to permit `dashboard/` React/Tailwind application code.
-- Task 2: Choose and document frontend build/deployment strategy.
 
 ### Phase 1: Telegram webhook migration
 
@@ -461,7 +320,7 @@ CAMERA_COMMAND_POLL_SECONDS=3
 - Task 8: Add daily job creation and snapshot service.
 - Task 9: Add MP4 generation service using `ffmpeg`.
 - Task 10: Add worker loop for generation, Telegram send, and immediate file deletion.
-- Task 11: Add video job status surfaces for Telegram/dashboard.
+- Task 11: Add video job status surfaces for Telegram.
 
 ### Phase 3: Voice-note playback
 
@@ -470,14 +329,6 @@ CAMERA_COMMAND_POLL_SECONDS=3
 - Task 14: Add a Telegram voice-note handler that queues worker-side audio preparation.
 - Task 15: Add authenticated camera command polling/media/result APIs.
 - Task 16: Add Android agent command polling and playback loop.
-
-### Phase 4: Mini App dashboard
-
-- Task 17: Scaffold Vite React TypeScript Tailwind dashboard package.
-- Task 18: Add Telegram Mini App `initData` verification service and tests.
-- Task 19: Add dashboard API endpoints.
-- Task 20: Build mobile dashboard UI and Telegram native integrations.
-- Task 21: Add `/dashboard` Telegram command and Nginx static serving.
 
 ### Phase 5: Hardening, docs, and acceptance
 
@@ -508,14 +359,6 @@ CAMERA_COMMAND_POLL_SECONDS=3
 - Android phone plays the audio and reports completion/failure.
 - Expired/failed commands are auditable.
 
-### Checkpoint D: Dashboard complete
-
-- Dashboard opens as Telegram Mini App.
-- React/Tailwind build produces static dist.
-- Nginx serves `/dashboard/` from dist.
-- Dashboard API validates Telegram `initData`.
-- UI works on mobile and Telegram light/dark themes.
-
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
@@ -526,14 +369,10 @@ CAMERA_COMMAND_POLL_SECONDS=3
 | `ffmpeg` consumes CPU/storage | Medium | Worker-only processing, one job at a time initially, temp dirs, cleanup on failure |
 | Voice playback abuse | High | Authorized users only, configured camera target, duration/size limits, expiry, audit events |
 | Android audio command unavailable | Medium | Detect command failure, stable error code, operator setup docs |
-| Mini App auth spoofing | High | Server-side Telegram `initData` HMAC validation and freshness checks |
-| Frontend supply chain complexity | Medium | Minimal dependencies, lockfile, build verification, no unnecessary UI libraries |
 | Retention deletes images while video job runs | Medium | Snapshot table and retention protection for active video jobs |
-| Generated files leak through static serving | High | Store videos/audio outside dashboard dist; never serve media by filesystem path |
 
 ## Resolved Implementation Decisions
 
 - Android voice playback uses `termux-media-player play <downloaded-audio-file>`.
 - Generated video and audio artifacts are deleted immediately after success or failure; only database metadata is retained.
-- `/timelapse [camera]` is deferred until after the dashboard is fully implemented.
 - Telegram webhook setup failure fails API startup so systemd marks `timelapse-api.service` unhealthy.
