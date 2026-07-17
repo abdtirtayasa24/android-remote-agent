@@ -33,9 +33,6 @@ server {
     client_max_body_size 5m;
     client_body_timeout 30s;
 
-
-    }
-
     location = /api/v1/telegram/webhook {
         limit_except POST {
             deny all;
