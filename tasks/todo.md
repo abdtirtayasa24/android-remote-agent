@@ -379,14 +379,14 @@
 **Description:** Extend storage layout, reconciliation, and cleanup logic for generated videos and voice-note audio files.
 
 **Acceptance criteria:**
-- [ ] Sent video files are deleted immediately after successful Telegram delivery.
-- [ ] Failed video artifacts are deleted with only metadata retained.
-- [ ] Audio command files are deleted immediately after command success or failure.
-- [ ] Stale temp files for video/audio are cleaned.
-- [ ] Referenced active files are protected.
+- [x] Sent video files are deleted immediately after successful Telegram delivery.
+- [x] Failed video artifacts are deleted with only metadata retained.
+- [x] Audio command files are deleted immediately after command success or failure.
+- [x] Stale temp files for video/audio are cleaned.
+- [x] Referenced active files are protected.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/integration/test_reconciliation.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/integration/test_reconciliation.py -q`
 
 **Dependencies:** Task 10, Task 14
 
@@ -404,13 +404,13 @@
 **Description:** Update project and operator docs to reflect webhook bot, daily videos, voice playback, new services, and acceptance steps.
 
 **Acceptance criteria:**
-- [ ] README describes new commands.
-- [ ] Architecture doc reflects webhook, video jobs, and command queue.
-- [ ] Implemented features doc is updated.
-- [ ] Operator docs include webhook troubleshooting, voice playback setup, and daily video acceptance.
+- [x] README describes new commands.
+- [x] Architecture doc reflects webhook, video jobs, and command queue.
+- [x] Implemented features doc is updated.
+- [x] Operator docs include webhook troubleshooting, voice playback setup, and daily video acceptance.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit/test_documentation_links.py -q`
+- [x] `cd server && ../.venv/bin/pytest tests/unit/test_documentation_links.py -q`
 
 **Dependencies:** Tasks 6, 10, 16, 21
 
@@ -432,17 +432,17 @@
 **Description:** Run local quality checks and document real VPS/Android acceptance steps for the new features.
 
 **Acceptance criteria:**
-- [ ] Server unit tests pass.
-- [ ] Camera-agent tests pass.
-- [ ] Ruff check passes.
-- [ ] Ruff format check passes.
-- [ ] Real-environment acceptance checklist is documented.
+- [x] Server unit tests pass.
+- [x] Camera-agent tests pass.
+- [x] Ruff check passes.
+- [x] Ruff format check passes.
+- [x] Real-environment acceptance checklist is documented.
 
 **Verification:**
-- [ ] `cd server && ../.venv/bin/pytest tests/unit -q`
-- [ ] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
-- [ ] `.venv/bin/ruff check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
-- [ ] `.venv/bin/ruff format --check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
+- [x] `cd server && ../.venv/bin/pytest tests/unit -q`
+- [x] `PYTHONPATH=camera-agent/src .venv/bin/pytest camera-agent/tests -q`
+- [x] `.venv/bin/ruff check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
+- [x] `.venv/bin/ruff format --check --config server/pyproject.toml server/src server/tests camera-agent/src camera-agent/tests`
 
 **Dependencies:** All implementation tasks
 

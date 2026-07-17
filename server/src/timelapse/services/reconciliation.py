@@ -11,8 +11,14 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from timelapse.models.entities import AuditEvent, ExportPart, Image
-from timelapse.models.enums import ImageStorageState
+from timelapse.models.entities import (
+    AuditEvent,
+    CameraCommand,
+    ExportPart,
+    Image,
+    TimelapseVideoJob,
+)
+from timelapse.models.enums import CameraCommandStatus, ImageStorageState, JobStatus
 from timelapse.services.image_files import fsync_directory
 
 
@@ -24,6 +30,8 @@ class ReconciliationResult:
     stale_staging_rows: int = 0
     stale_temp_files: int = 0
     stale_export_files: int = 0
+    stale_timelapse_files: int = 0
+    stale_audio_files: int = 0
 
 
 async def process_reconciliation_once(
@@ -34,6 +42,8 @@ async def process_reconciliation_once(
     stale_staging_age: timedelta = timedelta(hours=1),
     stale_temp_age: timedelta = timedelta(hours=1),
     stale_export_age: timedelta = timedelta(hours=6),
+    stale_timelapse_age: timedelta = timedelta(hours=6),
+    stale_audio_age: timedelta = timedelta(hours=1),
 ) -> ReconciliationResult:
     missing_files = await _mark_missing_database_files(
         session=session,
@@ -66,6 +76,49 @@ async def process_reconciliation_once(
         now=now,
         maximum_age=stale_export_age,
     )
+    referenced_timelapse_paths = set(
+        await session.scalars(
+            select(TimelapseVideoJob.storage_path)
+            .where(TimelapseVideoJob.storage_path.is_not(None))
+            .where(
+                TimelapseVideoJob.status.in_(
+                    [
+                        JobStatus.PENDING,
+                        JobStatus.PROCESSING,
+                        JobStatus.UPLOADING,
+                    ]
+                )
+            )
+        )
+    )
+    stale_timelapse_files = await _delete_stale_files(
+        root=storage_root / "timelapses",
+        referenced_paths=referenced_timelapse_paths,
+        now=now,
+        maximum_age=stale_timelapse_age,
+    )
+    referenced_audio_paths = set(
+        await session.scalars(
+            select(CameraCommand.media_storage_path)
+            .where(CameraCommand.media_storage_path.is_not(None))
+            .where(
+                CameraCommand.status.in_(
+                    [
+                        CameraCommandStatus.PREPARING,
+                        CameraCommandStatus.PENDING,
+                        CameraCommandStatus.CLAIMED,
+                        CameraCommandStatus.STARTED,
+                    ]
+                )
+            )
+        )
+    )
+    stale_audio_files = await _delete_stale_files(
+        root=storage_root / "audio-commands",
+        referenced_paths=referenced_audio_paths,
+        now=now,
+        maximum_age=stale_audio_age,
+    )
 
     return ReconciliationResult(
         missing_files=missing_files,
@@ -74,6 +127,8 @@ async def process_reconciliation_once(
         stale_staging_rows=stale_staging_rows,
         stale_temp_files=stale_temp_files,
         stale_export_files=stale_export_files,
+        stale_timelapse_files=stale_timelapse_files,
+        stale_audio_files=stale_audio_files,
     )
 
 

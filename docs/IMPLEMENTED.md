@@ -278,8 +278,12 @@ Implemented:
 - Stale temporary upload file deletion.
 - Old unreferenced export file deletion.
 - Referenced export part protection.
+- Stale unreferenced timelapse video file deletion.
+- Referenced active timelapse video file protection.
+- Stale unreferenced audio command file deletion.
+- Referenced active audio command file protection.
 
-Tests cover missing files, orphan quarantine, mismatch audit, stale temp/export cleanup, stale staging handling, and referenced export protection.
+Tests cover missing files, orphan quarantine, mismatch audit, stale temp/export cleanup, stale staging handling, referenced export protection, stale timelapse cleanup with referenced protection, and stale audio cleanup with referenced protection.
 
 ## Deployment and Operations
 

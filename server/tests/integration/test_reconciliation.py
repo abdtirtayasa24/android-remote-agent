@@ -8,8 +8,22 @@ from uuid import uuid4
 
 from sqlalchemy import select
 from timelapse.database import get_session_factory, session_scope
-from timelapse.models.entities import AuditEvent, Camera, ExportJob, ExportPart, Image
-from timelapse.models.enums import CaptureSource, ImageStorageState, JobStatus
+from timelapse.models.entities import (
+    AuditEvent,
+    Camera,
+    CameraCommand,
+    ExportJob,
+    ExportPart,
+    Image,
+    TimelapseVideoJob,
+)
+from timelapse.models.enums import (
+    CameraCommandStatus,
+    CameraCommandType,
+    CaptureSource,
+    ImageStorageState,
+    JobStatus,
+)
 from timelapse.services.reconciliation import process_reconciliation_once
 
 NOW = datetime(2026, 7, 16, 12, 0, tzinfo=UTC)
@@ -266,3 +280,153 @@ async def test_reconciliation_keeps_referenced_export_parts(
 
     assert result.stale_export_files == 0
     assert await path_exists(export_path)
+
+
+async def test_reconciliation_cleans_stale_timelapse_files(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    await create_camera(slug="front-door")
+
+    stale_video = tmp_path / "timelapses" / "old.mp4"
+    fresh_video = tmp_path / "timelapses" / "fresh.mp4"
+    for path in (stale_video, fresh_video):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(path.write_bytes, b"mp4")
+
+    old_ts = (NOW - timedelta(hours=12)).timestamp()
+    fresh_ts = (NOW - timedelta(minutes=5)).timestamp()
+    import os
+
+    os.utime(stale_video, (old_ts, old_ts))
+    os.utime(fresh_video, (fresh_ts, fresh_ts))
+
+    async with session_scope() as session:
+        result = await process_reconciliation_once(
+            session=session,
+            storage_root=tmp_path,
+            now=NOW,
+            stale_timelapse_age=timedelta(hours=1),
+        )
+
+    assert result.stale_timelapse_files == 1
+    assert not await path_exists(stale_video)
+    assert await path_exists(fresh_video)
+
+
+async def test_reconciliation_protects_referenced_timelapse_files(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera = await create_camera(slug="front-door")
+    camera_id = await get_camera_id(camera.slug)
+
+    referenced_video = tmp_path / "timelapses" / "active.mp4"
+    referenced_video.parent.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(referenced_video.write_bytes, b"mp4")
+
+    old_ts = (NOW - timedelta(hours=12)).timestamp()
+    import os
+
+    os.utime(referenced_video, (old_ts, old_ts))
+
+    async with session_scope() as session:
+        session.add(
+            TimelapseVideoJob(
+                camera_id=camera_id,
+                local_date_jakarta=NOW.date(),
+                start_at_utc=NOW - timedelta(hours=1),
+                end_at_utc=NOW,
+                status=JobStatus.PROCESSING,
+                image_count=10,
+                storage_path=str(referenced_video),
+                file_size_bytes=3,
+                sha256=hashlib.sha256(b"mp4").hexdigest(),
+            )
+        )
+
+    async with session_scope() as session:
+        result = await process_reconciliation_once(
+            session=session,
+            storage_root=tmp_path,
+            now=NOW,
+            stale_timelapse_age=timedelta(seconds=0),
+        )
+
+    assert result.stale_timelapse_files == 0
+    assert await path_exists(referenced_video)
+
+
+async def test_reconciliation_cleans_stale_audio_command_files(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    await create_camera(slug="front-door")
+    stale_audio = tmp_path / "audio-commands" / "old.mp3"
+    fresh_audio = tmp_path / "audio-commands" / "fresh.mp3"
+    for path in (stale_audio, fresh_audio):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(path.write_bytes, b"mp3")
+
+    old_ts = (NOW - timedelta(hours=2)).timestamp()
+    fresh_ts = (NOW - timedelta(minutes=1)).timestamp()
+    import os
+
+    os.utime(stale_audio, (old_ts, old_ts))
+    os.utime(fresh_audio, (fresh_ts, fresh_ts))
+
+    async with session_scope() as session:
+        result = await process_reconciliation_once(
+            session=session,
+            storage_root=tmp_path,
+            now=NOW,
+            stale_audio_age=timedelta(minutes=30),
+        )
+
+    assert result.stale_audio_files == 1
+    assert not await path_exists(stale_audio)
+    assert await path_exists(fresh_audio)
+
+
+async def test_reconciliation_protects_referenced_audio_command_files(
+    create_camera,
+    tmp_path: Path,
+) -> None:
+    camera = await create_camera(slug="front-door")
+    camera_id = await get_camera_id(camera.slug)
+
+    referenced_audio = tmp_path / "audio-commands" / "active.mp3"
+    referenced_audio.parent.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(referenced_audio.write_bytes, b"mp3")
+
+    old_ts = (NOW - timedelta(hours=2)).timestamp()
+    import os
+
+    os.utime(referenced_audio, (old_ts, old_ts))
+
+    async with session_scope() as session:
+        session.add(
+            CameraCommand(
+                camera_id=camera_id,
+                command_type=CameraCommandType.PLAY_AUDIO,
+                status=CameraCommandStatus.PENDING,
+                media_storage_path=str(referenced_audio),
+                media_mime_type="audio/mpeg",
+                media_size_bytes=3,
+                media_sha256=hashlib.sha256(b"mp3").hexdigest(),
+                requested_by_telegram_user_id=999,
+                requested_in_telegram_chat_id=999,
+                expires_at=NOW + timedelta(minutes=5),
+            )
+        )
+
+    async with session_scope() as session:
+        result = await process_reconciliation_once(
+            session=session,
+            storage_root=tmp_path,
+            now=NOW,
+            stale_audio_age=timedelta(seconds=0),
+        )
+
+    assert result.stale_audio_files == 0
+    assert await path_exists(referenced_audio)

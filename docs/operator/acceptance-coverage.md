@@ -27,7 +27,7 @@ This document maps Must Have MVP behavior to Automated or Manual acceptance chec
 | Export operations | `/exports` and `/cancel` enforce ownership/admin rules | Automated | `server/tests/integration/test_export_commands.py` |
 | Retention | Expired eligible images are deleted without breaking active exports | Automated | `server/tests/integration/test_retention.py` |
 | Disk protection | Hard disk pressure rejects uploads and severe pressure rejects exports | Automated | `server/tests/unit/test_storage_pressure.py`, `server/tests/integration/test_disk_pressure.py` |
-| Reconciliation | Missing, orphaned, mismatched, stale temp/export/staging files are handled | Automated | `server/tests/integration/test_reconciliation.py` |
+| Reconciliation | Missing, orphaned, mismatched, stale temp/export/staging/timelapse/audio files are handled | Automated | `server/tests/integration/test_reconciliation.py` |
 | Native deployment | VPS uses systemd, Nginx, Certbot, shared venv, and Neon | Manual | `docs/operator/server-installation.md`, `infrastructure/*.sh` |
 | Operations handover | Credential rotation, incidents, and runbooks are documented | Manual | `docs/operator/credential-rotation.md`, `docs/operator/operations.md`, `docs/operator/incident-recovery.md` |
 | Soak test | 24-hour MVP and seven-day soak have no critical consistency defect | Manual | `docs/operator/soak-test-report.md` |
